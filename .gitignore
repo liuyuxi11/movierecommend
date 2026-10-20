@@ -1,0 +1,8 @@
+.venv/
+.venv-tmp/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.aerich/
+.env
+.local-backups/
