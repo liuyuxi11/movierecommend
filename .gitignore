@@ -1,8 +1,14 @@
 .venv/
 .venv-tmp/
+.venv_new/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .aerich/
 .env
 .local-backups/
+frontend/node_modules/
+frontend/dist/
+data/processed/
+data/models/
+.DS_Store

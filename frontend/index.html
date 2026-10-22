@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="智影 · 大数据电影推荐系统 —— Spark ALS 协同过滤引擎驱动">
+  <meta name="keywords" content="电影推荐,Spark,ALS,大数据,协同过滤">
+  <title>智影 · 大数据电影推荐系统</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230F1014'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' fill='%23F5C518'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ============ 左侧固定导航 ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true">
+          <path d="M24 3 L29.5 17.5 L45 18 L33 28.5 L37.5 44 L24 35 L10.5 44 L15 28.5 L3 18 L18.5 17.5 Z" fill="#F5C518"/>
+          <circle cx="24" cy="23.5" r="5" fill="#0F1014"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">智影<span class="brand-dot">·</span>大数据推荐系统</div>
+        <div class="brand-sub">Spark ALS Engine</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="navList">
+      <a href="#/" class="nav-item" data-route="home">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+        <span>首页精选</span>
+      </a>
+      <a href="#/rate" class="nav-item" data-route="rate">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>
+        <span>个性打分</span>
+        <em class="nav-tag">冷启动</em>
+      </a>
+      <a href="#/recommend" class="nav-item" data-route="recommend">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        <span>猜你喜欢</span>
+        <em class="nav-tag gold">AI 推荐</em>
+      </a>
+      <a href="#/top" class="nav-item" data-route="top">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 21h12"/><path d="M12 17V4"/><path d="m8.5 7.5 3.5-3.5 3.5 3.5"/></svg>
+        <span>高分口碑榜</span>
+      </a>
+      <a href="#/reviews" class="nav-item" data-route="reviews">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12a8 8 0 0 1-8 8H4l2.2-2.9A8 8 0 1 1 21 12Z"/><path d="M8 11h8M8 14.5h5"/></svg>
+        <span>热门影评</span>
+      </a>
+    </nav>
+
+    <div class="nav nav-secondary">
+      <a href="#/myratings" class="nav-item" data-route="myratings">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 4 2.3 4.7 5.2.8-3.8 3.6.9 5.2L12 16l-4.6 2.4.9-5.2-3.8-3.6 5.2-.8Z"/></svg>
+        <span>我的评分</span>
+      </a>
+      <a href="#/myfavorites" class="nav-item" data-route="myfavorites">
+        <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20.5S4 15.9 4 10a4.6 4.6 0 0 1 8-2.6A4.6 4.6 0 0 1 20 10c0 5.9-8 10.5-8 10.5Z"/></svg>
+        <span>我的收藏</span>
+      </a>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="engine-badge">
+        <span class="engine-dot"></span>
+        <div>
+          <div class="engine-line1">ALS 协同过滤引擎</div>
+          <div class="engine-line2" id="apiStatus">正在检测服务…</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区域 ============ -->
+  <div class="main">
+    <header class="topbar" id="topbar">
+      <div class="topbar-inner">
+        <div class="search-capsule" id="searchCapsule">
+          <button class="search-filter" id="searchFilterBtn" type="button">
+            筛选
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <span class="search-divider"></span>
+          <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+          <input type="text" id="searchInput" placeholder="搜索电影、导演、主演、类型（支持 50,581 部影片检索）…" maxlength="100" autocomplete="off">
+          <button class="search-go" id="searchGoBtn" type="button" aria-label="搜索">搜索</button>
+        </div>
+        <div class="topbar-user" id="topbarUser">
+          <!-- 由 JS 渲染 -->
+        </div>
+      </div>
+      <!-- 筛选下拉 -->
+      <div class="filter-pop" id="filterPop" hidden>
+        <div class="filter-pop-title">按分类筛选</div>
+        <div class="filter-pop-grid" id="filterPopGrid"></div>
+        <div class="filter-pop-actions">
+          <button type="button" class="btn-ghost sm" id="filterClearBtn">清除筛选</button>
+          <button type="button" class="btn-primary sm" id="filterApplyBtn">应用</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="view" id="view"><!-- 路由视图 --></main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div>
+          <strong>智影 · 大数据电影推荐系统</strong>
+          <span class="footer-sub">Spark ALS 协同过滤 · Node.js · MySQL · 50,581 部影片库</span>
+        </div>
+        <div class="footer-status">
+          <span id="footerMode" class="mode-chip">…</span>
+          <span id="footerApi" class="api-chip">…</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============ 登录/注册弹窗 ============ -->
+  <div class="modal-layer" id="authModal" hidden>
+    <div class="auth-card" role="dialog" aria-modal="true" aria-label="登录注册">
+      <button class="modal-close" id="authClose" type="button" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <!-- 左栏 视觉区 -->
+      <div class="auth-visual">
+        <div class="auth-visual-glow"></div>
+        <div class="auth-poster-wall" id="authPosterWall"></div>
+        <div class="auth-visual-text">
+          <div class="auth-visual-title">专属私人影院</div>
+          <p>基于 Spark MLlib ALS 协同过滤算法<br>50,000+ 影片库为您定制专属片单</p>
+        </div>
+        <div class="auth-visual-badges">
+          <span>✦ ALS 协同过滤</span><span>✦ 大数据实训</span><span>✦ 实时推荐</span>
+        </div>
+      </div>
+      <!-- 右栏 表单区 -->
+      <div class="auth-form">
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" data-authtab="login" type="button">账号密码登录</button>
+          <button class="auth-tab" data-authtab="register" type="button">新用户注册</button>
+          <span class="auth-tab-indicator" id="authTabIndicator"></span>
+        </div>
+
+        <!-- 登录表单 -->
+        <form class="auth-body" id="loginForm" novalidate>
+          <div class="field">
+            <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.5 4.2-5 7.5-5s6.3 1.5 7.5 5"/></svg>
+            <input type="text" name="username" id="loginAccount" placeholder="请输入您的账号 (如: hadoop)" autocomplete="username">
+          </div>
+          <div class="field">
+            <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input type="password" name="pwd" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
+            <button type="button" class="pwd-eye" data-eye="loginPwd" aria-label="显示密码">
+              <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" hidden><path d="M4 4l16 16"/><path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17.8 17.8 0 0 1-3.2 3.9M6.2 6.8A16.9 16.9 0 0 0 2.5 12S6 18.5 12 18.5a9.6 9.6 0 0 0 3.2-.5"/></svg>
+            </button>
+          </div>
+          <div class="field-hint">支持使用账号、手机号或邮箱登录</div>
+          <button type="submit" class="auth-submit" id="loginBtn">立即登录</button>
+          <div class="auth-switch">还没有账号？<a href="javascript:;" id="goRegister">立即注册</a></div>
+          <div class="auth-back"><a href="#/">← 返回网站主页</a></div>
+        </form>
+
+        <!-- 注册表单 -->
+        <form class="auth-body" id="registerForm" hidden novalidate>
+          <div class="reg-grid">
+            <div class="field">
+              <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.5 4.2-5 7.5-5s6.3 1.5 7.5 5"/></svg>
+              <input type="text" name="username" id="regUsername" placeholder="昵称（2-50 字符）" autocomplete="username">
+            </div>
+            <div class="field">
+              <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="3.5" width="12" height="17" rx="2.5"/><path d="M10 18h4"/></svg>
+              <input type="tel" name="phone" id="regPhone" placeholder="手机号（数字）" autocomplete="tel">
+            </div>
+            <div class="field">
+              <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.5 7 7.5 5.5L19.5 7"/></svg>
+              <input type="email" name="email" id="regEmail" placeholder="邮箱" autocomplete="email">
+            </div>
+            <div class="field">
+              <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input type="password" name="pwd" id="regPwd" placeholder="密码（8 位以上，含字母和数字）" autocomplete="new-password">
+            </div>
+            <div class="field">
+              <svg class="field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input type="password" name="confirm_password" id="regPwd2" placeholder="确认密码" autocomplete="new-password">
+            </div>
+          </div>
+          <div class="field-hint">密码至少 8 位，且必须包含英文字母和数字</div>
+          <button type="submit" class="auth-submit" id="registerBtn">立即注册</button>
+          <div class="auth-switch">已有账号？<a href="javascript:;" id="goLogin">账号密码登录</a></div>
+          <div class="auth-back"><a href="#/">← 返回网站主页</a></div>
+        </form>
+
+        <div class="auth-agreement">登录/注册即代表阅读并同意<a href="javascript:;">《用户使用协议》</a>与<a href="javascript:;">《隐私保护政策》</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 通用弹层 / 抽屉 ============ -->
+  <div class="modal-layer" id="genericModal" hidden>
+    <div class="generic-card" id="genericCard"></div>
+  </div>
+
+  <div class="drawer-layer" id="drawerLayer" hidden>
+    <div class="drawer-panel" id="drawerPanel">
+      <div class="drawer-head">
+        <div class="drawer-title" id="drawerTitle"></div>
+        <button class="drawer-close" id="drawerClose" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+    </div>
+  </div>
+
+  <!-- 海报放大预览 -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" id="lightboxClose" type="button" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <img id="lightboxImg" alt="海报预览">
+  </div>
+
+  <!-- Spark 计算等待动效 -->
+  <div class="modal-layer spark-layer" id="sparkLayer" hidden>
+    <div class="spark-card">
+      <div class="spark-orb">
+        <div class="spark-orb-ring r1"></div>
+        <div class="spark-orb-ring r2"></div>
+        <div class="spark-orb-core">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg>
+        </div>
+      </div>
+      <div class="spark-title">Spark ALS 协同过滤引擎计算中</div>
+      <div class="spark-steps" id="sparkSteps">
+        <div class="spark-step" data-step="1">
+          <span class="spark-step-ico">1</span>
+          <span>正在读取您提交的个性化评分 (personalratings)…</span>
+        </div>
+        <div class="spark-step" data-step="2">
+          <span class="spark-step-ico">2</span>
+          <span>Spark MLlib ALS 协同过滤模型矩阵分解计算中…</span>
+        </div>
+        <div class="spark-step" data-step="3">
+          <span class="spark-step-ico">3</span>
+          <span>正在从 50,581 部影片中匹配 Top 10 推荐结果…</span>
+        </div>
+      </div>
+      <div class="spark-progress"><i id="sparkProgressBar"></i></div>
+      <div class="spark-note">首次计算约需 10s ~ 2min，请耐心等待</div>
+    </div>
+  </div>
+
+  <!-- 轻提示 -->
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/mock-data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
