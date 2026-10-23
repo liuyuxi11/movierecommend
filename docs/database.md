@@ -1,255 +1,280 @@
-﻿# 鏁版嵁搴撶粨鏋勮鏄?
-鏈枃妗ｆ弿杩板綋鍓?`movierecommend` MySQL 鏁版嵁搴撱€備笟鍔?schema 鐢?`backend/migrations/0001_schema_upgrade.sql` 寤虹珛锛孴ortoise ORM 瀹氫箟浣嶄簬 `backend/app/models.py`銆傚綋鍓嶆暟鎹簱鍙︽湁 Aerich 杩佺Щ鍏冩暟鎹〃 `aerich`銆?
-## 绾﹀畾
+# 数据库结构说明
+本文档描述当前`movierecommend` MySQL 数据库。业务 schema 由`backend/migrations/0001_schema_upgrade.sql`创建，Tortoise ORM 定义位于 `backend/app/models.py`。当前数据库还有 Aerich 迁移元数据表 `aerich`。
 
-- 鏁版嵁搴撲负 MySQL 8.0.42锛岃〃浣跨敤 InnoDB銆傛柊寤轰笟鍔¤〃浣跨敤 `utf8mb4_0900_ai_ci`锛涙部鐢ㄦ棫 schema 鐨?`user`銆乣movieinfo`銆乣personalratings`銆乣recommendresult` 浠嶄负 `utf8mb3_general_ci`銆俙user.active_username` 鐢熸垚鍒楀崟鐙娇鐢?`utf8mb4_0900_ai_ci`锛屽洜姝ゆ樀绉板敮涓€鎬уぇ灏忓啓涓嶆晱鎰熴€傛棫琛ㄥ瓧绗﹂泦鍚庣画鑻ラ渶缁熶竴锛屽簲鍗曠嫭璇勪及瀛楃杞崲鍜岀储寮曞奖鍝嶃€?- `DATETIME(6)` 鏈韩涓嶆惡甯︽椂鍖恒€傚簲鐢ㄩ€氳繃 Tortoise `use_tz=True`銆乣timezone="UTC"` 缁熶竴鎸?UTC 鍐欏叆鍜岃鍙栵紱Unix 绉掓椂闂存埑闇€鍏堣浆鎹负 UTC锛屽啀鍐欏叆 `rated_at` 鎴栧搴?UTC 鏃堕棿鍒椼€?- 涓氬姟鍏崇郴澶栭敭榛樿閲囩敤 `RESTRICT`锛岄樆姝㈢墿鐞嗗垹闄や粛琚紩鐢ㄧ殑鐢ㄦ埛銆佺數褰便€佽瘎璁烘垨鏁版嵁闆嗭紱涓炬姤澶勭悊浜哄閿?`handled_by_adminid` 浣跨敤 `SET NULL`銆備笟鍔¤处鍙枫€佺數褰便€佽瘎璁恒€佹敹钘忓拰鍒嗙被搴旈€氳繃 `deleted_at` 杞垹闄わ紱鍒嗘瀽鏌ヨ闇€鎸夋寚鏍囧彛寰勮繃婊よ蒋鍒犻櫎鏁版嵁銆?- `user` 鐨?`active_username`銆乣active_phone`銆乣active_email` 鏄暟鎹簱鐢熸垚鍒楋紝浠呯敤浜庢椿鍔ㄨ处鍙风殑鍞竴绾︽潫锛屼笉灞炰簬涓氬姟杈撳叆瀛楁銆傝蒋鍒犻櫎璐﹀彿瀵瑰簲鐢熸垚鍊间负 `NULL`锛屽厑璁哥浉鍚屾樀绉般€佹墜鏈哄彿鎴栭偖绠遍噸鏂版敞鍐屻€?- 鏃堕棿鍒楃殑 `CURRENT_TIMESTAMP(6)` 鍜?`ON UPDATE` 鏄暟鎹簱榛樿琛屼负锛涙湇鍔″啓鍏ユ椂闂村簲缁х画閬靛惊 UTC 绾﹀畾銆?- 涓嬫枃 `PK` 琛ㄧず涓婚敭锛宍FK` 琛ㄧず澶栭敭锛宍UQ` 琛ㄧず鍞竴绾︽潫锛宍IDX` 琛ㄧず鏅€氱储寮曪紝`CK` 琛ㄧず CHECK 绾︽潫銆?
-## 鍏崇郴鎬昏
+## 约定
+- 数据库为 MySQL 8.0.42，表使用 InnoDB。新建业务表使用 `utf8mb4_0900_ai_ci`；沿用旧 schema 的 `user`、`movieinfo`、`personalratings`、`recommendresult` 仍然为 `utf8mb3_general_ci`。`user.active_username` 生成列单独使用 `utf8mb4_0900_ai_ci`，因此索引唯一性大小写不敏感。旧表字符集后续如需统一，应单独评估字符转换和索引影响。
+- `DATETIME(6)` 本身不带时区。应用通过 Tortoise `use_tz=True`、`timezone="UTC"` 统一按 UTC 写入和读取；Unix 时间戳需要先转换为 UTC，再写入 `rated_at` 或者对应的 UTC 时间列。
+- 业务关系外键默认采用 `RESTRICT`，禁止物理删除仍被引用的用户、电影、评论或者数据集；举报处理人外键 `handled_by_adminid` 使用 `SET NULL`。业务账号、电影、评论、收藏和分类应该通过 `deleted_at` 软删除；分析查询需要按索引条件过滤软删除数据。
+- `user` 的 `active_username`、`active_phone`、`active_email` 是数据库生成列，仅用于活跃账号的唯一约束，不属于业务输入字段。软删除账号对应生成值为 `NULL`，允许相同用户名、手机号或者邮箱重新注册。
+- 时间列的 `CURRENT_TIMESTAMP(6)` 和 `ON UPDATE` 是数据库默认行为；服务写入时间应该继续遵循 UTC 约定。
+- 下文 `PK` 表示主键，`FK` 表示外键，`UQ` 表示唯一约束，`IDX` 表示普通索引，`CK` 表示 CHECK 约束。
 
+## 关系总览
 ```text
-user 鈹€鈹€< personalratings >鈹€鈹€ movieinfo
-user 鈹€鈹€< moviecomment >鈹€鈹€鈹€鈹€鈹€ movieinfo
-user 鈹€鈹€< commentlike >鈹€鈹€鈹€鈹€鈹€鈹€ moviecomment
-user 鈹€鈹€< commentlike_event > moviecomment
-user 鈹€鈹€< commentreport >鈹€鈹€鈹€鈹€ moviecomment 鈹€鈹€> adminuser (handled_by)
-user 鈹€鈹€< userfavorite >鈹€鈹€鈹€鈹€鈹€ movieinfo
-movieinfo 鈹€鈹€< moviecategory >鈹€鈹€ category
-trainingdataset 鈹€鈹€< trainingrating >鈹€鈹€ movieinfo
-user 鈹€鈹€< recommendationitem >鈹€鈹€ movieinfo 鈹€鈹€< recommendationevent
-adminuser 鈹€鈹€< adminoperationlog
+user ——< personalratings >—— movieinfo
+user ——< moviecomment >—————— movieinfo
+user ——< commentlike >———————— moviecomment
+user ——< commentlike_event > moviecomment
+user ——< commentreport >—————— movieinfo ——> adminuser (handled_by)
+user ——< userfavorite >—————— movieinfo
+movieinfo ——< moviecategory >—— category
+trainingdataset ——< trainingrating >—— movieinfo
+user ——< recommendationitem >—— movieinfo ——< recommendationevent
+adminuser ——< adminoperationlog
 ```
+符号 `A ——< B` 表示 B 中可以有多条记录引用 A。推荐事件通过 `recommendationid` 关联推荐条目，再从推荐条目获取用户和电影。
 
-绗﹀彿 `A 鈹€鈹€< B` 琛ㄧず B 涓彲鏈夊鏉¤褰曞紩鐢?A銆傛帹鑽愪簨浠堕€氳繃 `recommendationid` 鍏宠仈鎺ㄨ崘椤癸紝鍐嶄粠鎺ㄨ崘椤瑰彇寰楃敤鎴峰拰鐢靛奖銆?
-## 涓氬姟琛?
-### `user`锛氭櫘閫氱敤鎴?
-淇濆瓨娉ㄥ唽鐢ㄦ埛韬唤銆佺櫥褰曞拰璧勬枡淇℃伅锛涚鐞嗗憳璐﹀彿鍗曠嫭淇濆瓨鍦?`adminuser`銆?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+## 业务表
+### `user`：普通用户
+保存注册用户身份、登录和资料信息；管理员账号单独保存在 `adminuser`。
+
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `userid` | int | 鍚?| PK锛岃嚜澧炵敤鎴?ID銆?|
-| `username` | varchar(50) | 鍚?| 鏄电О锛涙椿鍔ㄨ处鍙峰敮涓€涓斿ぇ灏忓啓涓嶆晱鎰熴€?|
-| `password` | varchar(255) | 鍚?| 瀵嗙爜鍝堝笇锛屼笉寰椾繚瀛樻槑鏂囧瘑鐮併€?|
-| `phone` | varchar(32) | 鍚?| 蹇呭～锛涙椿鍔ㄨ处鍙峰敮涓€銆?|
-| `email` | varchar(254) | 鍚?| 蹇呭～锛涙椿鍔ㄨ处鍙峰敮涓€銆?|
-| `avatar` | varchar(1000) | 鏄?| 澶村儚 URL 鎴栧瓨鍌ㄥ紩鐢ㄣ€?|
-| `status` | varchar(20) | 鍚?| 榛樿 `active`锛涜处鍙风姸鎬佸€奸渶鐢卞簲鐢ㄧ害瀹氥€?|
-| `created_at` / `updated_at` | datetime(6) | 鍚?| 鍒涘缓鍜屾渶鍚庢洿鏂版椂闂淬€?|
-| `deleted_at` | datetime(6) | 鏄?| 杞垹闄ゆ椂闂达紱NULL 琛ㄧず鏈垹闄ゃ€?|
-| `active_username` / `active_phone` / `active_email` | 鐢熸垚鍒?| 鏄?| 浠呮湭鍒犻櫎鐢ㄦ埛璁＄畻瀹為檯鍊硷紱鐢ㄤ簬涓変釜娲诲姩璐﹀彿鍞竴绱㈠紩銆?|
+| `userid` | int | 否 | PK，自增用户 ID。 |
+| `username` | varchar(50) | 否 | 昵称；活跃账号唯一且大小写不敏感。 |
+| `password` | varchar(255) | 否 | 密码哈希，不得保存明文密码。 |
+| `phone` | varchar(32) | 否 | 必填；活跃账号唯一。 |
+| `email` | varchar(254) | 否 | 必填；活跃账号唯一。 |
+| `avatar` | varchar(1000) | 是 | 头像 URL 或者存储引用。 |
+| `status` | varchar(20) | 否 | 默认 `active`；账号状态值由应用约定。 |
+| `created_at` / `updated_at` | datetime(6) | 否 | 创建和最后更新时间。 |
+| `deleted_at` | datetime(6) | 是 | 软删除时间；NULL 代表未删除。 |
+| `active_username` / `active_phone` / `active_email` | 生成列 | 是 | 仅未删除用户计算实际值；用于三个活跃账号唯一索引。 |
 
-绾︽潫锛歅K `userid`锛沀Q `uk_user_active_username(active_username)`銆乣uk_user_active_phone(active_phone)`銆乣uk_user_active_email(active_email)`锛汭DX `idx_user_status_created(status, created_at)`銆乣idx_user_deleted_at(deleted_at)`銆傜敓鎴愬垪涓嶆槸鐢?ORM 鍒涘缓鐢ㄦ埛鏃朵紶鍏ョ殑瀛楁銆?
-### `adminuser`锛氱鐞嗗憳
+约束：PK `userid`，UQ `uk_user_active_username(active_username)`、`uk_user_active_phone(active_phone)`、`uk_user_active_email(active_email)`，IDX `idx_user_status_created(status, created_at)`、`idx_user_deleted_at(deleted_at)`。生成列不是 ORM 创建用户时传入的字段。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `adminuser`：管理员
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `adminid` | int | 鍚?| PK锛岃嚜澧炵鐞嗗憳 ID銆?|
-| `username` | varchar(50) | 鍚?| 绠＄悊鍛樼櫥褰曞悕銆?|
-| `password` | varchar(255) | 鍚?| 绠＄悊鍛樺瘑鐮佸搱甯屻€?|
-| `role` | varchar(30) | 鍚?| 绠＄悊瑙掕壊銆?|
-| `status` | varchar(20) | 鍚?| 榛樿 `active`銆?|
-| `created_at` / `updated_at` | datetime(6) | 鍚?| 鍒涘缓鍜屾洿鏂版椂闂淬€?|
-| `deleted_at` | datetime(6) | 鏄?| 绠＄悊鍛樿蒋鍒犻櫎鏃堕棿銆?|
+| `adminid` | int | 否 | PK，自增管理员 ID。 |
+| `username` | varchar(50) | 否 | 管理员登录名。 |
+| `password` | varchar(255) | 否 | 管理员密码哈希。 |
+| `role` | varchar(30) | 否 | 管理角色。 |
+| `status` | varchar(20) | 否 | 默认 `active`。 |
+| `created_at` / `updated_at` | datetime(6) | 否 | 创建和更新时间。 |
+| `deleted_at` | datetime(6) | 是 | 管理员软删除时间。 |
 
-绾︽潫锛歅K `adminid`锛沀Q `uk_adminuser_username(username)`锛汭DX `idx_adminuser_role_status(role, status)`锛汣K `chk_adminuser_role` 鍙厑璁?`admin`銆乣superadmin`銆傜鐞嗗憳鐢ㄦ埛鍚嶅綋鍓嶅敮涓€绾︽潫涓嶅洜杞垹闄ら噴鏀俱€?
-### `movieinfo`锛氱數褰?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `adminid`，UQ `uk_adminuser_username(username)`，IDX `idx_adminuser_role_status(role, status)`，CK `chk_adminuser_role` 只允许 `admin`、`superadmin`。管理员用户名当前唯一约束不因软删除释放。
+
+### `movieinfo`：电影
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `movieid` | int | 鍚?| PK锛涘綋鍓?ID 鐢卞鍏ユ暟鎹彁渚涳紝涓嶆槸鑷鍒椼€?|
-| `moviename` | varchar(1000) | 鏄?| 鐢靛奖鍚嶃€?|
-| `releasetime` | date | 鏄?| 涓婃槧鏃ユ湡銆?|
-| `director` / `leadactors` | varchar(1000) | 鏄?| 瀵兼紨鍜屼富婕旀枃鏈€?|
-| `picture` | varchar(1000) | 鏄?| 鍥剧墖鍦板潃鎴栧瓨鍌ㄥ紩鐢ㄣ€?|
-| `averating` | double(11,1) | 鏄?| 鐢靛奖璧勬枡涓殑骞冲潎鍒嗭紱闇€涓庣珯鍐呯敤鎴疯瘎鍒嗚仛鍚堝彛寰勫尯鍒嗐€?|
-| `numrating` | int | 鏄?| 鐢靛奖璧勬枡涓殑璇勫垎鏁帮紱闇€鏄庣‘鍏舵暟鎹潵婧愩€?|
-| `description` | varchar(1000) | 鏄?| 绠€浠嬨€?|
-| `typelist` | varchar(255) | 鏄?| 鍘熷閫楀彿鍒嗛殧绫诲瀷锛屼繚鐣欑敤浜庡吋瀹癸紱瑙勮寖鍏崇郴瑙?`moviecategory`銆?|
-| `updated_at` | datetime(6) | 鍚?| 鏇存柊鏃堕棿銆?|
-| `deleted_at` | datetime(6) | 鏄?| 鐢靛奖杞垹闄ゆ椂闂淬€?|
+| `movieid` | int | 否 | PK；当前 ID 由导入数据提供，不是自增列。 |
+| `moviename` | varchar(1000) | 是 | 电影名。 |
+| `releasetime` | date | 是 | 上映日期。 |
+| `director` / `leadactors` | varchar(1000) | 是 | 导演和主演文本。 |
+| `picture` | varchar(1000) | 是 | 图片地址或者存储引用。 |
+| `averating` | double(11,1) | 是 | 电影资料里的平均分；需要和站内用户评分口径区分。 |
+| `numrating` | int | 是 | 电影资料里的评分人数；需要明确其数据来源。 |
+| `description` | varchar(1000) | 是 | 简介。 |
+| `typelist` | varchar(255) | 是 | 原始逗号分隔类型，保留用于兼容；规范关系看 `moviecategory`。 |
+| `updated_at` | datetime(6) | 否 | 更新时间。 |
+| `deleted_at` | datetime(6) | 是 | 电影软删除时间。 |
 
-绾︽潫锛歅K `movieid`锛汭DX `idx_movieinfo_rating(averating)`銆乣idx_movieinfo_popularity(numrating)`銆乣idx_movieinfo_release(releasetime)`銆乣idx_movieinfo_deleted_at(deleted_at)`銆備笟鍔″垪琛ㄩ粯璁よ繃婊?`deleted_at IS NOT NULL` 鐨勭數褰憋紱鍘嗗彶璇勫垎鍜屽弽棣堜粛淇濈暀銆?
-### `personalratings`锛氱珯鍐呯敤鎴疯瘎鍒?
-淇濆瓨娉ㄥ唽鐢ㄦ埛褰撳墠鏈夋晥璇勫垎锛屾瘡涓敤鎴峰姣忛儴鐢靛奖鑷冲涓€鏉°€備慨鏀硅瘎鍒嗘槸鏇存柊褰撳墠璁板綍锛屼笉淇濈暀姣忔淇敼鍘嗗彶銆?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `movieid`，IDX `idx_movieinfo_rating(averating)`、`idx_movieinfo_popularity(numrating)`、`idx_movieinfo_release(releasetime)`、`idx_movieinfo_deleted_at(deleted_at)`。业务列表默认过滤 `deleted_at IS NOT NULL` 的电影；历史评分和反馈仍然保留。
+
+### `personalratings`：站内用户评分
+保存注册用户当前有效评分，每个用户对每部电影最多一条。修改评分是更新当前记录，不保留每次修改历史。
+
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `ratingid` | bigint | 鍚?| PK锛岃嚜澧炶瘎鍒嗚褰?ID銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `rating` | int | 鍚?| 1鈥?0 鍒嗐€?|
-| `rated_at` | datetime(6) | 鍚?| 褰撳墠璇勫垎鏃堕棿锛屾寜 UTC 瀛樺偍銆?|
-| `timestamp` | char(10) | 鏄?| 鏃?Unix 鏃堕棿鎴冲瓧娈碉紝浣滀负鍏煎/瀹¤瀛楁鏆傜暀锛涙柊閫昏緫浣跨敤 `rated_at`銆?|
+| `ratingid` | bigint | 否 | PK，自增评分记录 ID。 |
+| `userid` | int | 否 | FK → `user.userid`。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `rating` | int | 否 | 1–10 分。 |
+| `rated_at` | datetime(6) | 否 | 当前评分时间，按 UTC 存储。 |
+| `timestamp` | char(10) | 是 | 旧 Unix 时间戳字段，作为兼容/审计字段暂留；新逻辑使用 `rated_at`。 |
 
-绾︽潫锛歅K `ratingid`锛沀Q `uk_personalratings_user_movie(userid, movieid)`锛汧K `fk_personalratings_user`銆乣fk_personalratings_movie`锛屽垹闄よ鍒欏潎涓?RESTRICT锛汣K `chk_personalratings_rating` 闄愬埗 1鈥?0锛汭DX `idx_personalratings_movie_rating(movieid, rating)`銆乣idx_personalratings_user_rated(userid, rated_at)`銆?
-ALS 鏄惧紡鍙嶉鍙粠 `(userid, movieid, rating)` 璇诲彇銆傚鍑哄埌 Spark 鍓嶉渶鍐冲畾鏄惁杩囨护杞垹闄ょ敤鎴?鐢靛奖锛涘綋鍓嶈〃涓嶅惈鐙珛鐨勮瘎鍒嗗彉鏇翠簨浠躲€?
-### `trainingdataset`锛氱绾胯缁冩暟鎹泦鍏冧俊鎭?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `ratingid`，UQ `uk_personalratings_user_movie(userid, movieid)`，FK `fk_personalratings_user`、`fk_personalratings_movie`，删除规则均为 RESTRICT，CK `chk_personalratings_rating` 限制 1–10，IDX `idx_personalratings_movie_rating(movieid, rating)`、`idx_personalratings_user_rated(userid, rated_at)`。
+
+ALS 模型反馈可以从 `(userid, movieid, rating)` 读取。导出到 Spark 前需要确定是否过滤软删除用户/电影；当前表不包含独立的评分变更事件。
+
+### `trainingdataset`：离线训练数据集元信息
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `datasetid` | int | 鍚?| PK锛岃嚜澧炴暟鎹泦 ID銆?|
-| `dataset_key` | varchar(100) | 鍚?| 绋冲畾鐨勬暟鎹泦涓氬姟鏍囪瘑銆?|
-| `source_name` | varchar(255) | 鍚?| 鏁版嵁婧愬悕绉般€?|
-| `rating_min` / `rating_max` | decimal(5,2) | 鍚?| 鍘熷璇勫垎鑼冨洿杈圭晫銆?|
-| `created_at` | datetime(6) | 鍚?| 鏁版嵁闆嗚褰曞垱寤烘椂闂淬€?|
+| `datasetid` | int | 否 | PK，自增数据集 ID。 |
+| `dataset_key` | varchar(100) | 否 | 稳定的数据集业务标识。 |
+| `source_name` | varchar(255) | 否 | 数据源名称。 |
+| `rating_min` / `rating_max` | decimal(5,2) | 否 | 原始评分范围边界。 |
+| `created_at` | datetime(6) | 否 | 数据集记录创建时间。 |
 
-绾︽潫锛歅K `datasetid`锛沀Q `uk_trainingdataset_key(dataset_key)`锛汣K `chk_trainingdataset_rating_range(rating_min < rating_max)`銆傝琛ㄧ洰鍓嶄笉璁板綍鏂囦欢璺緞銆佹牎楠屽拰銆佸鍏ョ姸鎬佹垨璁稿彲淇℃伅銆?
-### `trainingrating`锛氱绾胯缁冭瘎鍒嗘槑缁?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `datasetid`，UQ `uk_trainingdataset_key(dataset_key)`，CK `chk_trainingdataset_rating_range(rating_min < rating_max)`。该表目前不记录文件路径、校验和、导入状态或者更多信息。
+
+### `trainingrating`：离线训练评分明细
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `trainingratingid` | bigint | 鍚?| PK锛岃嚜澧炲鍏ヨ ID銆?|
-| `datasetid` | int | 鍚?| FK 鈫?`trainingdataset.datasetid`銆?|
-| `external_userid` | int | 鍚?| 鍘熷鏁版嵁闆嗕腑鐨勭敤鎴?ID锛屼笉鏄珯鍐?`userid`銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `rating` | decimal(5,2) | 鍚?| 鍘熷璇勫垎锛涘鍏ユ椂鎸夋暟鎹泦璇勫垎鑼冨洿楠岃瘉銆?|
-| `rated_at` | datetime(6) | 鏄?| 鍘熷璇勫垎鏃堕棿锛涜嫢婧愭椂闂村瓨鍦紝杞崲涓?UTC銆?|
+| `trainingratingid` | bigint | 否 | PK，自增导入行 ID。 |
+| `datasetid` | int | 否 | FK → `trainingdataset.datasetid`。 |
+| `external_userid` | int | 否 | 原始数据集里的用户 ID，不是站内 `userid`。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `rating` | decimal(5,2) | 否 | 原始评分；导入时按数据集评分范围校验。 |
+| `rated_at` | datetime(6) | 是 | 原始评分时间；如果源时间存在，转换为 UTC。 |
 
-绾︽潫锛歅K `trainingratingid`锛沀Q `uk_trainingrating_dataset_user_movie(datasetid, external_userid, movieid)`锛汧K `fk_trainingrating_dataset`銆乣fk_trainingrating_movie`锛屽垹闄よ鍒欎负 RESTRICT锛汭DX `idx_trainingrating_movie(movieid)`銆乣idx_trainingrating_dataset_user(datasetid, external_userid)`銆傝法鏁版嵁闆嗚缁冩椂澶栭儴鐢ㄦ埛 ID 鍙兘閲嶅锛孲park 渚у簲浣跨敤鏁版嵁闆嗙淮搴︽瀯閫犺缁冪敤鎴烽敭鎴栭噸鏂扮紪鐮佽繛缁暣鏁?ID銆?
-### `category`锛氱數褰辩被鍨?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `trainingratingid`，UQ `uk_trainingrating_dataset_user_movie(datasetid, external_userid, movieid)`，FK `fk_trainingrating_dataset`、`fk_trainingrating_movie`，删除规则为 RESTRICT，IDX `idx_trainingrating_movie(movieid)`、`idx_trainingrating_dataset_user(datasetid, external_userid)`。跨数据集训练时外部用户 ID 可能重复，Spark 侧应使用数据集维度构造训练用户键或者重新编码连续整数 ID。
+
+### `category`：电影类型
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `categoryid` | int | 鍚?| PK锛岃嚜澧炲垎绫?ID銆?|
-| `name` | varchar(100) | 鍚?| 鍒嗙被鍚嶇О銆?|
-| `created_at` | datetime(6) | 鍚?| 鍒涘缓鏃堕棿銆?|
-| `deleted_at` | datetime(6) | 鏄?| 杞垹闄ゆ椂闂淬€?|
+| `categoryid` | int | 否 | PK，自增分类 ID。 |
+| `name` | varchar(100) | 否 | 分类名称。 |
+| `created_at` | datetime(6) | 否 | 创建时间。 |
+| `deleted_at` | datetime(6) | 是 | 软删除时间。 |
 
-绾︽潫锛歅K `categoryid`锛沀Q `uk_category_name(name)`銆傚敮涓€绾︽潫娌℃湁鎸夎蒋鍒犻櫎鐘舵€佸尯鍒嗭紱鍚屽悕鍒嗙被涓嶈兘閲嶅鎻掑叆銆?
-### `moviecategory`锛氱數褰变笌绫诲瀷鍏宠仈
+约束：PK `categoryid`，UQ `uk_category_name(name)`。唯一约束没有按软删除状态区分；同名分类不能重复插入。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `moviecategory`：电影与类型关联
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `id` | bigint | 鍚?| PK锛岃嚜澧炲叧鑱?ID銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `categoryid` | int | 鍚?| FK 鈫?`category.categoryid`銆?|
+| `id` | bigint | 否 | PK，自增关联 ID。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `categoryid` | int | 否 | FK → `category.categoryid`。 |
 
-绾︽潫锛歅K `id`锛沀Q `uk_moviecategory_movie_category(movieid, categoryid)`锛汭DX `idx_moviecategory_category_movie(categoryid, movieid)`锛涗袱涓?FK 鍧囦负 RESTRICT銆傜數褰辩瓫閫夊拰绫诲瀷鑱氬悎搴斾娇鐢ㄨ琛紱`movieinfo.typelist` 鏄吋瀹瑰瓧娈碉紝涓嶅簲涓庡叧鑱旇〃褰㈡垚鍙岄噸鍐欏叆婧愩€?
-### `moviecomment`锛氱數褰辫瘎璁?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `id`，UQ `uk_moviecategory_movie_category(movieid, categoryid)`，IDX `idx_moviecategory_category_movie(categoryid, movieid)`；两个 FK 均为 RESTRICT。电影筛选和分类聚合应当使用该表；`movieinfo.typelist` 是兼容字段，不应和关联表形成双重写入源。
+
+### `moviecomment`：电影评论
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `commentid` | bigint | 鍚?| PK锛岃嚜澧炶瘎璁?ID銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `content` | varchar(500) | 鍚?| 璇勮鍐呭锛涗笟鍔¤鍒欎笉鍏佽淇敼銆?|
-| `moderation_status` | varchar(20) | 鍚?| 榛樿 `published`锛涘厑璁?`published`銆乣review_pending`銆乣hidden`銆?|
-| `created_at` | datetime(6) | 鍚?| 璇勮鍒涘缓鏃堕棿銆?|
-| `deleted_at` | datetime(6) | 鏄?| 璇勮杞垹闄ゆ椂闂淬€?|
+| `commentid` | bigint | 否 | PK，自增评论 ID。 |
+| `userid` | int | 否 | FK → `user.userid`。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `content` | varchar(500) | 否 | 评论内容；业务规则不允许修改。 |
+| `moderation_status` | varchar(20) | 否 | 默认 `published`；允许 `published`、`review_pending`、`hidden`。 |
+| `created_at` | datetime(6) | 否 | 评论创建时间。 |
+| `deleted_at` | datetime(6) | 是 | 评论软删除时间。 |
 
-绾︽潫锛歅K `commentid`锛汧K `fk_moviecomment_user`銆乣fk_moviecomment_movie`锛屽潎涓?RESTRICT锛汭DX `idx_moviecomment_movie_created(movieid, created_at)`銆乣idx_moviecomment_user_created(userid, created_at)`銆乣idx_moviecomment_moderation_created(moderation_status, created_at)`锛汣K `chk_moviecomment_moderation_status`銆傝涓炬姤鍚庝粛灞曠ず浣嗚繘鍏?`review_pending`锛涚粨妗堟帴鍙楀悗鏀逛负 `hidden`锛岄┏鍥炲悗鎭㈠ `published`銆傚睍绀鸿瘎璁哄簲鍚屾椂杩囨护杞垹闄わ紝骞舵寜鐘舵€佽鍒欑瓫閫夈€?
-### `commentlike`锛氳瘎璁哄綋鍓嶇偣璧炵姸鎬?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `commentid`，FK `fk_moviecomment_user`、`fk_moviecomment_movie`，均为 RESTRICT，IDX `idx_moviecomment_movie_created(movieid, created_at)`、`idx_moviecomment_user_created(userid, created_at)`、`idx_moviecomment_moderation_created(moderation_status, created_at)`，CK `chk_moviecomment_moderation_status`。被举报后仍然展示但是进入 `review_pending`；结案审核后改为 `hidden`，申诉后恢复 `published`。展示评论应当同时过滤软删除，并按状态规则筛选。
+
+### `commentlike`：评论当前点赞状态
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `id` | bigint | 鍚?| PK锛岃嚜澧炲叧绯?ID銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `commentid` | bigint | 鍚?| FK 鈫?`moviecomment.commentid`銆?|
-| `is_active` | tinyint(1) | 鍚?| 褰撳墠鐐硅禐鐘舵€侊紝榛樿 1锛涘彇娑堝悗涓?0銆?|
-| `created_at` / `updated_at` | datetime(6) | 鍚?| 鐐硅禐鍏崇郴鍒涘缓鍜屾渶杩戠姸鎬佹敼鍙樻椂闂淬€?|
+| `id` | bigint | 否 | PK，自增关系 ID。 |
+| `userid` | int | 否 | FK → `user.userid`。 |
+| `commentid` | bigint | 否 | FK → `moviecomment.commentid`。 |
+| `is_active` | tinyint(1) | 否 | 当前点赞状态，默认 1；取消后为 0。 |
+| `created_at` / `updated_at` | datetime(6) | 否 | 点赞关系创建和最近状态变更时间。 |
 
-绾︽潫锛歅K `id`锛沀Q `uk_commentlike_user_comment(userid, commentid)` 淇濊瘉姣忎汉姣忔潯璇勮鍙湁涓€涓綋鍓嶇姸鎬佽锛汭DX `idx_commentlike_comment_active(commentid, is_active)`锛涗袱涓?FK 鍧囦负 RESTRICT銆傞噸鐐硅禐鏇存柊鐜版湁琛岋紝鑰岄潪鎻掑叆閲嶅褰撳墠鐘舵€併€?
-### `commentlike_event`锛氱偣璧炴搷浣滄棩蹇?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `id`，UQ `uk_commentlike_user_comment(userid, commentid)` 保证每人每条评论只有一条当前状态行，IDX `idx_commentlike_comment_active(commentid, is_active)`；两个 FK 均为 RESTRICT。重复点赞更新已有行，而不是插入重复当前状态。
+
+### `commentlike_event`：点赞操作日志
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `eventid` | bigint | 鍚?| PK锛岃嚜澧炰簨浠?ID銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `commentid` | bigint | 鍚?| FK 鈫?`moviecomment.commentid`銆?|
-| `action` | varchar(10) | 鍚?| `like` 鎴?`unlike`銆?|
-| `created_at` | datetime(6) | 鍚?| 鎿嶄綔鍙戠敓鏃堕棿銆?|
+| `eventid` | bigint | 否 | PK，自增事件 ID。 |
+| `userid` | int | 否 | FK → `user.userid`。 |
+| `commentid` | bigint | 否 | FK → `moviecomment.commentid`。 |
+| `action` | varchar(10) | 否 | `like` 或者 `unlike`。 |
+| `created_at` | datetime(6) | 否 | 操作发生时间。 |
 
-绾︽潫锛歅K `eventid`锛汣K `chk_commentlike_event_action`锛汭DX `idx_commentlike_event_comment_created(commentid, created_at)`銆乣idx_commentlike_event_user_created(userid, created_at)`锛涗袱涓?FK 鍧囦负 RESTRICT銆傝琛ㄥ彧杩藉姞浜嬩欢锛屾寜瑕佹眰涓嶈鑷姩娓呯悊鏈熼檺銆?
-### `commentreport`锛氳瘎璁轰妇鎶ヤ笌缁撴
+约束：PK `eventid`，CK `chk_commentlike_event_action`，IDX `idx_commentlike_event_comment_created(commentid, created_at)`、`idx_commentlike_event_user_created(userid, created_at)`；两个 FK 均为 RESTRICT。该表只追加事件，按要求不设置自动清理期限。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `commentreport`：评论举报与结案
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `reportid` | bigint | 鍚?| PK锛岃嚜澧炰妇鎶?ID銆?|
-| `commentid` | bigint | 鍚?| FK 鈫?`moviecomment.commentid`銆?|
-| `reporter_userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `reason_code` | varchar(40) | 鍚?| 涓炬姤鍘熷洜浠ｇ爜銆?|
-| `reason_detail` | varchar(500) | 鏄?| 閫夋嫨 `other` 鏃跺繀濉€?|
-| `status` | varchar(20) | 鍚?| 榛樿 `pending`锛涘厑璁?`pending`銆乣accepted`銆乣rejected`銆?|
-| `created_at` | datetime(6) | 鍚?| 涓炬姤鏃堕棿銆?|
-| `handled_at` | datetime(6) | 鏄?| 鍚庡彴缁撴鏃堕棿銆?|
-| `handled_by_adminid` | int | 鏄?| FK 鈫?`adminuser.adminid`锛涘垹闄ょ鐞嗗憳鏃惰涓?NULL銆?|
+| `reportid` | bigint | 否 | PK，自增举报 ID。 |
+| `commentid` | bigint | 否 | FK → `moviecomment.commentid`。 |
+| `reporter_userid` | int | 否 | FK → `user.userid`。 |
+| `reason_code` | varchar(40) | 否 | 举报原因编码。 |
+| `reason_detail` | varchar(500) | 是 | 选择 `other` 时必填。 |
+| `status` | varchar(20) | 否 | 默认 `pending`；允许 `pending`、`accepted`、`rejected`。 |
+| `created_at` | datetime(6) | 否 | 举报时间。 |
+| `handled_at` | datetime(6) | 是 | 后台结案时间。 |
+| `handled_by_adminid` | int | 是 | FK → `adminuser.adminid`；删除管理员时设为 NULL。 |
 
-绾︽潫锛歅K `reportid`锛沀Q `uk_commentreport_reporter_comment(reporter_userid, commentid)` 闄愬埗鍚屼竴鐢ㄦ埛瀵瑰悓涓€璇勮鍙兘涓炬姤涓€娆★紱IDX `idx_commentreport_status_created(status, created_at)`锛汧K `fk_commentreport_comment`銆乣fk_commentreport_reporter` 涓?RESTRICT锛宍fk_commentreport_admin` 涓?SET NULL銆傚師鍥犱唬鐮侊細`malicious_attack`銆乣insulting_language`銆乣harmful_information`銆乣excessive_promotion`銆乣advertisement`銆乣other`銆侰K `chk_commentreport_reason`銆乣chk_commentreport_other_detail`銆乣chk_commentreport_status` 鏍￠獙鍘熷洜銆佸叾浠栧師鍥犺鎯呭強鐘舵€併€?
-### `userfavorite`锛氱敤鎴风數褰辨敹钘?
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+约束：PK `reportid`，UQ `uk_commentreport_reporter_comment(reporter_userid, commentid)` 限制同一个用户对同一条评论只能举报一次；IDX `idx_commentreport_status_created(status, created_at)`，FK `fk_commentreport_comment`、`fk_commentreport_reporter` 为 RESTRICT，`fk_commentreport_admin` 为 SET NULL。原因编码：`malicious_attack`、`insulting_language`、`harmful_information`、`excessive_promotion`、`advertisement`、`other`。CK `chk_commentreport_reason`、`chk_commentreport_other_detail`、`chk_commentreport_status` 校验原因、其他详情以及状态。
+
+### `userfavorite`：用户电影收藏
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `id` | bigint | 鍚?| PK锛岃嚜澧炴敹钘忓叧绯?ID銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `status` | varchar(30) | 鍚?| `want_to_watch` 鎴?`watched`銆?|
-| `created_at` / `updated_at` | datetime(6) | 鍚?| 鍏崇郴鍒涘缓鍜屾渶杩戞洿鏂版椂闂淬€?|
-| `deleted_at` | datetime(6) | 鏄?| 鍙栨秷鏀惰棌鏃堕棿锛汵ULL 涓哄綋鍓嶆湁鏁堟敹钘忋€?|
+| `id` | bigint | 否 | PK，自增收藏关系 ID。 |
+| `userid` | int | 否 | FK → `user.userid`。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `status` | varchar(30) | 否 | `want_to_watch` 或者 `watched`。 |
+| `created_at` / `updated_at` | datetime(6) | 否 | 关系创建和最近更新时间。 |
+| `deleted_at` | datetime(6) | 是 | 取消收藏时间；NULL 为当前有效收藏。 |
 
-绾︽潫锛歅K `id`锛沀Q `uk_userfavorite_user_movie(userid, movieid)`锛汭DX `idx_userfavorite_user_status_deleted(userid, status, deleted_at)`銆乣idx_userfavorite_movie_status_deleted(movieid, status, deleted_at)`锛汧K 鍧囦负 RESTRICT銆傚彇娑堟敹钘忎繚鐣欒骞惰缃?`deleted_at`锛涘啀娆℃敹钘忔仮澶嶅師琛屻€佹竻绌?`deleted_at` 骞舵洿鏂?`updated_at`銆傚悓涓€鐢ㄦ埛瀵瑰悓涓€鐢靛奖濮嬬粓澶嶇敤涓€鏉″叧绯汇€?
-### `adminoperationlog`锛氱鐞嗗憳鎿嶄綔瀹¤
+约束：PK `id`，UQ `uk_userfavorite_user_movie(userid, movieid)`，IDX `idx_userfavorite_user_status_deleted(userid, status, deleted_at)`、`idx_userfavorite_movie_status_deleted(movieid, status, deleted_at)`，FK 均为 RESTRICT。取消收藏保留行并设置 `deleted_at`；再次收藏恢复原行、清空 `deleted_at` 并更新 `updated_at`。同一个用户对同一部电影始终复用一条关系。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `adminoperationlog`：管理员操作审计
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `logid` | bigint | 鍚?| PK锛岃嚜澧炴棩蹇?ID銆?|
-| `adminid` | int | 鍚?| FK 鈫?`adminuser.adminid`銆?|
-| `action` | varchar(100) | 鍚?| 鎿嶄綔绫诲瀷銆?|
-| `target_type` | varchar(50) | 鍚?| 鎿嶄綔鐩爣绫诲瀷銆?|
-| `target_id` | varchar(100) | 鏄?| 鐩爣 ID锛屼互瀛楃涓插吋瀹逛笉鍚屽疄浣撲富閿被鍨嬨€?|
-| `detail` | json | 鏄?| 鎵╁睍鎿嶄綔鏄庣粏銆?|
-| `created_at` | datetime(6) | 鍚?| 鎿嶄綔鏃堕棿銆?|
+| `logid` | bigint | 否 | PK，自增日志 ID。 |
+| `adminid` | int | 否 | FK → `adminuser.adminid`。 |
+| `action` | varchar(100) | 否 | 操作类型。 |
+| `target_type` | varchar(50) | 否 | 操作目标类型。 |
+| `target_id` | varchar(100) | 是 | 目标 ID，用字符串兼容不同实体主键类型。 |
+| `detail` | json | 是 | 扩展操作明细。 |
+| `created_at` | datetime(6) | 否 | 操作时间。 |
 
-绾︽潫锛歅K `logid`锛汭DX `idx_adminoperationlog_admin_created(adminid, created_at)`銆乣idx_adminoperationlog_target(target_type, target_id)`锛汧K `fk_adminoperationlog_admin` 涓?RESTRICT銆傛棩蹇楁寜瑕佹眰闀挎湡淇濈暀锛屼笉璁剧疆鑷姩杩囨湡銆?
-### `recommendationitem`锛氭帹鑽愭壒娆′腑鐨勭數褰遍」
+约束：PK `logid`，IDX `idx_adminoperationlog_admin_created(adminid, created_at)`、`idx_adminoperationlog_target(target_type, target_id)`，FK `fk_adminoperationlog_admin` 为 RESTRICT。日志按要求长期保留，不设置自动过期。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `recommendationitem`：推荐批次里的电影条目
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `recommendationid` | bigint | 鍚?| PK锛岃嚜澧炴帹鑽愰」 ID銆?|
-| `request_id` | varchar(64) | 鍚?| 涓€娆℃帹鑽愯姹?鎵规鏍囪瘑銆?|
-| `userid` | int | 鍚?| FK 鈫?`user.userid`锛涘彧闈㈠悜鐧诲綍鐢ㄦ埛鎺ㄨ崘銆?|
-| `movieid` | int | 鍚?| FK 鈫?`movieinfo.movieid`銆?|
-| `position` | int | 鍚?| 璇ョ數褰卞湪鏈壒娆＄殑鎺掑簭浣嶇疆銆?|
-| `movie_rating_snapshot` | decimal(4,1) | 鏄?| 鐢熸垚鏃剁數褰变笟鍔¤瘎鍒嗗揩鐓э紝涓嶆槸 ALS 棰勬祴鍊笺€?|
-| `prediction_score` | decimal(10,6) | 鏄?| ALS 鎴栧叾浠栫畻娉曠殑棰勬祴鍒?鎺掑簭鍒嗐€?|
-| `algorithm_version` | varchar(100) | 鏄?| 绠楁硶鎴栨ā鍨嬬増鏈爣璇嗐€?|
-| `generated_at` | datetime(6) | 鍚?| 鎺ㄨ崘椤圭敓鎴愭椂闂淬€?|
+| `recommendationid` | bigint | 否 | PK，自增推荐条目 ID。 |
+| `request_id` | varchar(64) | 否 | 一次推荐请求唯一标识。 |
+| `userid` | int | 否 | FK → `user.userid`；只面向登录用户推荐。 |
+| `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
+| `position` | int | 否 | 该电影在本批次的排序位置。 |
+| `movie_rating_snapshot` | decimal(4,1) | 是 | 生成时电影业务评分快照，不是 ALS 预测值。 |
+| `prediction_score` | decimal(10,6) | 是 | ALS 或者其他算法的预测分/排序分。 |
+| `algorithm_version` | varchar(100) | 是 | 算法或者模型版本标识。 |
+| `generated_at` | datetime(6) | 否 | 推荐条目生成时间。 |
 
-绾︽潫锛歅K `recommendationid`锛沀Q `uk_recommendationitem_request_movie(request_id, movieid)`锛岄伩鍏嶄竴涓姹傞噸澶嶆帹鑽愬悓涓€鐢靛奖锛汭DX `idx_recommendationitem_user_generated(userid, generated_at)`锛汧K 鐢ㄦ埛鍜岀數褰卞潎涓?RESTRICT銆傚綋鍓嶆病鏈夌嫭绔嬫帹鑽愯姹傝〃锛宍request_id` 鐨勭敤鎴峰綊灞炲拰浣嶇疆鍞竴鎬х敱搴旂敤淇濊瘉銆?
-### `recommendationevent`锛氭帹鑽愭洕鍏変笌鍙嶉浜嬩欢
+约束：PK `recommendationid`，UQ `uk_recommendationitem_request_movie(request_id, movieid)`，避免一个请求重复推荐同一部电影，IDX `idx_recommendationitem_user_generated(userid, generated_at)`，FK 用户和电影均为 RESTRICT。当前没有独立的推荐请求表，`request_id` 的用户归属和位置唯一性由应用保证。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `recommendationevent`：推荐曝光与反馈事件
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `eventid` | bigint | 鍚?| PK锛岃嚜澧炰簨浠?ID銆?|
-| `recommendationid` | bigint | 鍚?| FK 鈫?`recommendationitem.recommendationid`銆?|
-| `event_type` | varchar(20) | 鍚?| `impression`銆乣click` 鎴?`not_interested`銆?|
-| `created_at` | datetime(6) | 鍚?| 浜嬩欢鏃堕棿銆?|
+| `eventid` | bigint | 否 | PK，自增事件 ID。 |
+| `recommendationid` | bigint | 否 | FK → `recommendationitem.recommendationid`。 |
+| `event_type` | varchar(20) | 否 | `impression`、`click` 或者 `not_interested`。 |
+| `created_at` | datetime(6) | 否 | 事件时间。 |
 
-绾︽潫锛歅K `eventid`锛汣K `chk_recommendationevent_type`锛汭DX `idx_recommendationevent_type_created(event_type, created_at)`銆乣idx_recommendationevent_item_type(recommendationid, event_type)`锛汧K `fk_recommendationevent_item` 涓?RESTRICT銆傛洕鍏夊簲鍦ㄦ帹鑽愰」瀹為檯杩涘叆鍙鍖哄煙鏃惰褰曘€傜敤鎴峰拰鐢靛奖淇℃伅閫氳繃鎺ㄨ崘椤硅繛鎺ュ彇寰楋紱鍚屼竴鎺ㄨ崘椤瑰彲鏈夊涓涓轰簨浠躲€傛洕鍏夊幓閲嶃€丆TR 鍒嗘瘝銆佺偣鍑诲綊鍥犵獥鍙ｅ拰閲嶅鐐瑰嚮鍙ｅ緞浠嶉渶鐢卞垎鏋愯鑼冪‘瀹氥€?
-## 鍏煎涓庤縼绉昏緟鍔╄〃
+约束：PK `eventid`，CK `chk_recommendationevent_type`，IDX `idx_recommendationevent_type_created(event_type, created_at)`、`idx_recommendationevent_item_type(recommendationid, event_type)`，FK `fk_recommendationevent_item` 为 RESTRICT。曝光应该在推荐条目实际进入可视区域时记录。用户和电影信息通过推荐条目关联获取；同一条推荐条目可以有多条行为事件。曝光去重、CTR 口径、点击归因窗口和重复点击口径仍需要由分析规范确定。
 
-### `recommendresult`锛氭棫鐗堟帹鑽愮粨鏋滃吋瀹硅〃
-
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+## 兼容与迁移辅助表
+### `recommendresult`：旧版推荐结果兼容表
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `userid` | int | 鏄?| 鏃х粨鏋滀腑鐨勭敤鎴?ID锛涙棤 FK銆?|
-| `movieid` | int | 鏄?| 鏃х粨鏋滀腑鐨勭數褰?ID锛涙棤 FK銆?|
-| `rating` | float | 鏄?| **鐢靛奖璇勫垎**锛屼笉鏄?ALS 棰勬祴鍒嗐€?|
-| `moviename` | varchar(1000) | 鏄?| 鐢靛奖鍚嶅揩鐓с€?|
+| `userid` | int | 是 | 旧结果里的用户 ID；无 FK。 |
+| `movieid` | int | 是 | 旧结果里的电影 ID；无 FK。 |
+| `rating` | float | 是 | **电影评分**，不是 ALS 预测分。 |
+| `moviename` | varchar(1000) | 是 | 电影名快照。 |
 
-鏃ц〃鏃?PK銆丗K銆佺储寮曘€佹壒娆°€佷綅缃€佺畻娉曠増鏈垨鏇濆厜鍙嶉瀛楁锛屼笉鑳借繕鍘熷巻鍙叉帹鑽愬弽棣堛€傚綋鍓?ORM 鏈槧灏勬琛紱淇濈暀銆佷笅绾挎垨杩佺Щ鑷?`recommendationitem` 鐨勮鍒掗渶缁撳悎鏃ф帴鍙ｇ‘璁ゃ€?
-### `aerich`锛氳縼绉荤増鏈厓鏁版嵁
+旧表无 PK、FK、索引、批次、位置、算法版本或者曝光反馈字段，不能还原历史推荐反馈。当前 ORM 未映射该表；保留、下线或者迁移到 `recommendationitem` 的计划需要结合旧接口确认。
 
-| 瀛楁 | 绫诲瀷 | 鍙┖ | 璇存槑 |
+### `aerich`：迁移版本元数据
+| 字段 | 类型 | 可空 | 说明 |
 |---|---|---:|---|
-| `id` | int | 鍚?| PK锛岃嚜澧炲唴閮?ID銆?|
-| `version` | varchar(255) | 鍚?| 宸插簲鐢ㄨ縼绉绘枃浠跺悕銆?|
-| `app` | varchar(100) | 鍚?| Tortoise app 鍚嶇О銆?|
-| `content` | json | 鍚?| Aerich 淇濆瓨鐨勬ā鍨嬬姸鎬佸揩鐓с€?|
+| `id` | int | 否 | PK，自增内部 ID。 |
+| `version` | varchar(255) | 否 | 已应用迁移文件名。 |
+| `app` | varchar(100) | 否 | Tortoise app 名称。 |
+| `content` | json | 否 | Aerich 保存的模型状态快照。 |
 
-璇ヨ〃鐢?Aerich 浣跨敤锛屼笉鎵胯浇涓氬姟鏁版嵁锛涗笉瑕佹墜宸ョ紪杈戞垨娓呯┖銆傚綋鍓嶉涓凡搴旂敤杩佺Щ涓?`1_schema_upgrade.py`銆?
-## 鍒嗘瀽鎸囨爣涓庡叧鑱旇矾寰?
-| 鎸囨爣 | 涓昏鏁版嵁婧?| 鍏抽敭杩囨护/杩炴帴 |
+该表由 Aerich 使用，不承载业务数据；不要手动编辑或者清空。当前第一个已应用迁移为 `1_schema_upgrade.py`。
+
+## 分析指标与关联链路
+| 指标 | 主要数据源 | 关键过滤/连接 |
 |---|---|---|
-| 绔欏唴璇勫垎鍒嗗竷銆佺數褰辫瘎鍒嗗潎鍊煎拰浜烘暟 | `personalratings` | 鎸?`rating`銆乣movieid` 鑱氬悎锛涜嫢鏄剧ず鏈夋晥鐢靛奖鍒欒繛鎺?`movieinfo` 骞舵帓闄よ蒋鍒犻櫎鐢靛奖銆?|
-| 绂荤嚎鏁版嵁闆嗚瘎鍒嗗垎甯?| `trainingrating`銆乣trainingdataset` | 閫氳繃 `datasetid` 鍒嗘暟鎹泦锛涗笉瑕佹妸 `external_userid` 褰撲綔 `user.userid`銆?|
-| 璇勮鏁颁笌瀹℃牳闃熷垪 | `moviecomment` | 缁熻鍓嶆帓闄?`deleted_at` 闈?NULL锛涙寜 `moderation_status` 鍒嗙粍銆?|
-| 鐐硅禐褰撳墠閲?| `commentlike` | 杩囨护 `is_active = 1`銆?|
-| 鐐硅禐/鍙栨秷鎿嶄綔閲?| `commentlike_event` | 鎸?`action`銆乣created_at` 鑱氬悎銆?|
-| 涓炬姤閲忋€佸緟澶勭悊閲忋€佸鐞嗘椂闀?| `commentreport` | 鎸?`status`銆乣created_at` 鑱氬悎锛涘鐞嗘椂闀跨敱 `handled_at - created_at` 璁＄畻銆?|
-| 鎯崇湅/宸茬湅鏁伴噺 | `userfavorite` | 鎺掗櫎 `deleted_at` 闈?NULL锛屾寜 `status` 鑱氬悎銆?|
-| 鎺ㄨ崘鏇濆厜銆佺偣鍑汇€佷笉鎰熷叴瓒?| `recommendationevent` + `recommendationitem` | 浜嬩欢鍏宠仈鎺ㄨ崘椤逛互鍙栧緱鐢ㄦ埛銆佺數褰便€佹壒娆°€佷綅缃拰绠楁硶鐗堟湰锛涙寚鏍囧幓閲嶄笌鍒嗘瘝灏氭湭瀹氫箟銆?|
-| 绠＄悊鎿嶄綔閲?| `adminoperationlog` | 鎸夌鐞嗗憳銆佹搷浣滅被鍨嬨€佺洰鏍囧拰 UTC 鏃堕棿鑼冨洿鑱氬悎銆?|
+| 站内评分分布、电影平均分和人数 | `personalratings` | 按 `rating`、`movieid` 聚合；如果展示有效电影则连接 `movieinfo` 并排除软删除电影。 |
+| 离线数据集评分分布 | `trainingrating`、`trainingdataset` | 通过 `datasetid` 分数据集；不要把 `external_userid` 当作 `user.userid`。 |
+| 评论数量与审核队列 | `moviecomment` | 统计前排除 `deleted_at` 非 NULL；按 `moderation_status` 分组。 |
+| 当前点赞量 | `commentlike` | 过滤 `is_active = 1`。 |
+| 点赞/取消操作量 | `commentlike_event` | 按 `action`、`created_at` 聚合。 |
+| 举报量、待处理量、处理时长 | `commentreport` | 按 `status`、`created_at` 聚合；处理时长由 `handled_at - created_at` 计算。 |
+| 想看/已看数量 | `userfavorite` | 排除 `deleted_at` 非 NULL，按 `status` 聚合。 |
+| 推荐曝光、点击、不感兴趣 | `recommendationevent` + `recommendationitem` | 事件关联推荐条目以获取用户、电影、批次、位置和算法版本；指标去重与口径尚未定义。 |
+| 管理操作量 | `adminoperationlog` | 按管理员、操作类型、目标和 UTC 时间范围聚合。 |
 
-## 鏁版嵁澶勭悊浜ゆ帴娉ㄦ剰浜嬮」
+## 数据处理接口注意事项
+- ALS 模型评分源以 `personalratings` 的当前有效评分为基准；如果合并外部数据，再读取 `trainingrating` 并在 Spark 侧构造不冲突的用户索引。应用用户表为空的时候，不能把外部评分伪造成站内用户评分。
+- 电影 ID 由导入数据提供。外部数据集的电影 ID 必须先映射到 `movieinfo.movieid`；不能确认映射时应在导入侧保留外部电影键并隔离未匹配行，当前 schema 尚无通用电影映射表。
+- `movieinfo.averating/numrating` 和 `personalratings` 聚合结果可能来自不同来源；下游报表和推荐特征必须标注使用哪一种口径。
+- 训练任务、数据快照版本、评估指标、模型文件位置、任务状态和模型发布/回滚不由当前业务表管理。其持久化位置与 Celery/Spark 任务约定需要另行确认；Redis 只作为任务消息代理、短期状态缓存。
+- MySQL 外键限制物理删除，但软删除不会自动级联。分析查询、ALS 数据抽取和推荐召回过滤都必须明确是否排除已软删除的用户、电影、评论或者分类。
 
-- ALS 鏄惧紡璇勫垎婧愪互 `personalratings` 鐨勫綋鍓嶆湁鏁堣瘎鍒嗕负鍑嗭紱鑻ュ悎骞跺閮ㄦ暟鎹紝鍐嶈鍙?`trainingrating` 骞跺湪 Spark 渚ф瀯閫犱笉鍐茬獊鐨勭敤鎴风储寮曘€傚簲鐢ㄧ敤鎴疯〃涓虹┖鏃讹紝涓嶈兘鎶婂閮ㄨ瘎鍒嗕吉閫犳垚绔欏唴鐢ㄦ埛璇勫垎銆?- 鐢靛奖 ID 鐢辫緭鍏ユ暟鎹彁渚涖€傚閮ㄦ暟鎹泦鐨勭數褰?ID 蹇呴』鍏堟槧灏勫埌 `movieinfo.movieid`锛涗笉鑳界‘璁ゆ槧灏勬椂搴斿湪瀵煎叆灞備繚鐣欏閮ㄧ數褰遍敭骞堕殧绂绘湭鍖归厤琛岋紝褰撳墠 schema 灏氭棤閫氱敤鐢靛奖鏄犲皠琛ㄣ€?- `movieinfo.averating/numrating` 涓?`personalratings` 鑱氬悎缁撴灉鍙兘鏉ヨ嚜涓嶅悓鏉ユ簮锛涗笅娓告姤琛ㄥ拰鎺ㄨ崘鐗瑰緛蹇呴』鏍囨敞浣跨敤鍝鍙ｅ緞銆?- 璁粌浠诲姟銆佹暟鎹揩鐓х増鏈€佽瘎浼版寚鏍囥€佹ā鍨嬫枃浠朵綅缃€佷换鍔＄姸鎬佸拰妯″瀷鍙戝竷/鍥炴粴涓嶇敱褰撳墠涓氬姟琛ㄧ鐞嗐€傚叾鎸佷箙鍖栦綅缃笌 Celery/Spark 浣滀笟濂戠害闇€鍙﹁纭畾锛汻edis 鍙綔涓轰换鍔℃秷鎭唬鐞?鐭湡鐘舵€佸悗绔€?- MySQL 澶栭敭闄愬埗鐗╃悊鍒犻櫎锛屼絾杞垹闄や笉鑷姩绾ц仈銆傚垎鏋愭煡璇€丄LS 鏁版嵁鎶藉彇鍜屾帹鑽愬€欓€夎繃婊ら兘蹇呴』鏄庣‘鏄惁鎺掗櫎宸茶蒋鍒犻櫎鐨勭敤鎴枫€佺數褰便€佽瘎璁烘垨鍒嗙被銆?
-## 褰撳墠闄愬埗涓庡緟瀹氬彛寰?
-- `trainingdataset` 鐩墠鍙湁鍚嶇О鍜岃瘎鍒嗚寖鍥达紝缂哄皯鏁版嵁鐗堟湰銆佹潵婧愯鍙€佹牎楠屽拰銆佸鍏ョ姸鎬佸強璁板綍鏁扮瓑鍙鐜版€у厓鏁版嵁銆?- `personalratings` 鍙繚瀛樺綋鍓嶈瘎鍒嗭紱鑻ヨ鍒嗘瀽璇勫垎淇敼鍘嗗彶锛岄渶瑕佹柊澧炶拷鍔犲紡璇勫垎浜嬩欢琛ㄣ€?- 鎺ㄨ崘鎵规灏氭棤鐙珛鐖跺疄浣擄紝涓嶈兘鍗曠嫭淇濆瓨璇锋眰绾х姸鎬併€佸€欓€夋暟閲忔垨澶辫触淇℃伅锛涚洰鍓嶅彧鍙粠鎺ㄨ崘椤圭殑 `request_id` 鑱氬悎銆?- 鏇濆厜/鐐瑰嚮浜嬩欢鐨勫箓绛夐敭銆佸幓閲嶇獥鍙ｃ€丆TR 鍒嗘瘝銆佲€滀笉鎰熷叴瓒ｂ€濈巼瀹氫箟鍙婃帹鑽愯姹傚け璐ョ粺璁″彛寰勫緟纭銆?- `recommendresult` 鏄惁浠嶈鐜版湁鎺ュ彛浣跨敤鍙婂叾閫€褰规椂闂村緟纭銆?
+## 当前限制与待定口径
+- `trainingdataset` 目前只有名称和评分范围，缺少数据版本、来源许可、校验和、导入状态以及记录数等可复现元信息。
+- `personalratings` 只保存当前评分；如果要分析评分修改历史，需要新增追加式评分事件表。
+- 推荐请求尚无独立实体，不能单独保存请求参数、召回数量或者失败信息；目前只能从推荐条目里的 `request_id` 聚合。
+- 曝光/点击事件的去重键、去重窗口、CTR 口径、“不感兴趣”率定义以及推荐请求失败统计口径待确认。
+- `recommendresult` 是否还被现有接口使用以及其下线时间待确认。
