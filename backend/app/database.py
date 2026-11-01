@@ -31,7 +31,6 @@ async def init_db() -> None:
         modules={"models": ["app.models"]},
         use_tz=True,
         timezone="UTC",
-        _enable_global_fallback=True,
     )
 
 

@@ -13,6 +13,8 @@ class User(models.Model):
     email = fields.CharField(max_length=254)
     avatar = fields.CharField(max_length=1000, null=True)
     status = fields.CharField(max_length=20, default="active")
+    # Incremented whenever existing JWTs must be invalidated.
+    token_version = fields.IntField(default=0)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
     deleted_at = fields.DatetimeField(null=True)
@@ -28,6 +30,8 @@ class AdminUser(models.Model):
     password = fields.CharField(max_length=255)
     role = fields.CharField(max_length=30)
     status = fields.CharField(max_length=20, default="active")
+    # Incremented whenever existing administrator JWTs must be invalidated.
+    token_version = fields.IntField(default=0)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
     deleted_at = fields.DatetimeField(null=True)

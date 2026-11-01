@@ -1,443 +1,197 @@
 # 电影推荐系统 API 契约
 
-本文档描述当前 FastAPI 实际注册的接口，供前端联调使用。接口共16个方法/路径组合；未实现的规划功能不视为可调用接口。
+本文按当前 FastAPI OpenAPI 中注册的接口整理，供前端联调。接口实现是请求和响应的实际依据；未注册为 HTTP 路由的数据分析能力不属于本契约。当前 OpenAPI 包含 53 个 method/path 操作（含 `GET /`）。
 
-## 1. 通用约定
-### 1.1 基础信息
+## 连接与通用约定
 
-| 项目 | 约定 |
-|---|---|
-| Base URL | 部署环境提供，例如 `http://127.0.0.1:8000`；下文路径均相对于 Base URL |
-| 请求格式 | JSON 请求使用 `Content-Type: application/json` |
-| 认证方式 | 受保护接口使用 `Authorization: Bearer <access_token>` |
-| Token 有效期 | 登录成功后签发的 JWT 有效期为 2 小时 |
-| 时间 | 服务端按 UTC 处理时间字段；时间响应为 ISO 8601 字符串 |
-| API 在线文档 | `<API_BASE_URL>/docs` |
-| OpenAPI JSON | `<API_BASE_URL>/openapi.json` |
-| 开发 CORS | 默认允许 `http://localhost:5173`；可通过逗号分隔的 `CORS_ORIGINS` 配置 |
+- 本地地址：`http://127.0.0.1:8000`；Swagger：`/docs`；OpenAPI：`/openapi.json`。
+- 除头像注册外，请求体均为 JSON，使用 `Content-Type: application/json`。头像注册使用 `multipart/form-data`。
+- 受保护的用户接口使用 `Authorization: Bearer <access_token>`；管理员接口使用管理员登录得到的 access token。不可将 refresh token 用作 Bearer token。
+- 用户登录 `POST /api/auth/login` 返回 access token 有效期 900 秒、refresh token 有效期 604800 秒。管理员登录返回相同期限。刷新接口需在 JSON 请求体中传 refresh token。
+- HTTP 状态码是请求结果依据；成功响应通常包含 `code`，但 `data`、`msg` 等字段因接口而异。不要假设所有接口都有相同的响应外壳。
+- 请求校验失败通常为 `422`；业务错误为 JSON `detail`。全局异常响应为 `{"code":500,"detail":"服务器内部错误"}`。
+- 常见状态：`201` 创建成功；`202` 任务已接受；`400` 业务操作失败；`401` 凭据缺失/无效/过期；`403` 角色或资源所有权不符；`404` 资源不存在或已软删除；`409` 唯一性/状态冲突；`413` 头像超过 5 MiB；`415` 头像类型不接受；`422` 参数校验失败；`429` 找回密码请求冷却；`502` 邮件发送失败；`503` 相关服务未配置或不可用。
+- Swagger 的 **Authorize** 使用隐藏的 OAuth2 表单接口 `/api/auth/token`：填账号到 `username`、密码到 `password`。该接口不在 OpenAPI 路由清单中；普通前端登录应调用 JSON 接口 `/api/auth/login`。
 
-账号被禁用或软删除后，即使 JWT 尚未过期，受保护接口也会返回 HTTP `401`。当前没有刷新 Token、退出登录或服务端 Token 撤销接口；修改密码不会主动撤销已签发的 Token。
+## 接口索引
 
-### 1.2 响应与错误
-
-成功响应的 HTTP 状态码通常为 `200`，注册接口为 `201`。业务成功数据一般包含 `code` 字段，但 HTTP 状态码才是请求结果的权威状态；根路径和推荐结果接口的结构与其他接口不同。
-FastAPI 参数校验失败时返回 HTTP `422`，常见结构如下：
-
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "field_name"],
-      "msg": "Field required",
-      "type": "missing"
-    }
-  ]
-}
-```
-
-业务错误通常使用 `{"detail":"错误说明"}`；具体端点可能返回结构化 `detail` 对象。常见状态码：
-
-| HTTP 状态码 | 含义 |
-|---|---|
-| `400` | 原密码错误 |
-| `401` | 登录凭据错误，或缺少/无效/过期的 Bearer Token |
-| `403` | 请求中的 `userid` 与当前登录用户不一致 |
-| `404` | 电影、分类或当前用户的推荐记录不存在/不可用 |
-| `409` | 注册资料冲突或收藏并发冲突 |
-| `422` | 请求体或查询参数未通过校验 |
-| `503` | 推荐生成任务服务尚未配置 |
-
-## 2. 接口总览
-
-| 方法 | 路径 | 认证 | 功能 |
+| 方法 | 路径 | 权限 | 用途 |
 |---|---|---|---|
-| `GET` | `/` | 否 | 服务状态 |
-| `POST` | `/api/auth/register` | 否 | 注册 |
-| `POST` | `/api/auth/login` | 否 | 登录并获取 JWT |
-| `GET` | `/api/auth/me` | 是 | 查询当前用户资料 |
-| `PUT` | `/api/auth/me` | 是 | 修改当前用户资料 |
-| `PUT` | `/api/auth/me/password` | 是 | 修改密码 |
-| `GET` | `/api/movies/random` | 否 | 获取随机电影 |
-| `GET` | `/api/movies` | 否 | 分页、搜索、分类筛选和排序 |
-| `GET` | `/api/movies/{movieid}` | 否 | 查询电影详情 |
-| `POST` | `/api/ratings/submit` | 是 | 批量新增或更新评分 |
-| `GET` | `/api/ratings/me` | 是 | 查询当前用户评分 |
-| `GET` | `/api/favorites/me` | 是 | 查询当前用户收藏 |
-| `POST` | `/api/favorites/toggle` | 是 | 新增、更新或取消收藏 |
-| `POST` | `/api/recommend/generate` | 是 | 请求生成推荐；当前返回 `503` |
-| `GET` | `/api/recommend/result` | 是 | 查询当前用户最新推荐结果 |
-| `POST` | `/api/recommend/event` | 是 | 记录推荐曝光/点击/不感兴趣事件 |
+| GET | `/` | 公开 | 根状态信息 |
+| POST | `/api/auth/register` | 公开 | JSON 注册 |
+| POST | `/api/auth/register-with-avatar` | 公开 | multipart 注册及头像文件 |
+| POST | `/api/auth/login` | 公开 | 用户登录 |
+| POST | `/api/auth/refresh` | 公开，需 refresh token | 刷新用户令牌 |
+| POST | `/api/auth/logout` | 用户 | 用户退出 |
+| GET | `/api/auth/me` | 用户 | 当前用户资料 |
+| PUT | `/api/auth/me` | 用户 | 更新当前用户资料 |
+| PUT | `/api/auth/me/password` | 用户 | 修改密码 |
+| POST | `/api/auth/forgot-password/request` | 公开 | 请求邮箱验证码 |
+| POST | `/api/auth/forgot-password/confirm` | 公开 | 验证并重置密码 |
+| GET | `/api/movies/random` | 公开 | 随机电影，最多 10 部 |
+| GET | `/api/movies` | 公开 | 电影搜索、筛选、排序、分页 |
+| GET | `/api/movies/{movieid}` | 公开 | 电影详情和分类 |
+| POST | `/api/movies` | 管理员 | 新建电影 |
+| PUT | `/api/movies/{movieid}` | 管理员 | 更新电影 |
+| DELETE | `/api/movies/{movieid}` | 管理员 | 软删除电影 |
+| GET | `/api/movies/categories` | 公开 | 分类列表 |
+| POST | `/api/movies/categories` | 管理员 | 新建分类 |
+| PUT | `/api/movies/categories/{categoryid}` | 管理员 | 修改分类 |
+| DELETE | `/api/movies/categories/{categoryid}` | 管理员 | 软删除分类 |
+| GET | `/api/ratings/me` | 用户 | 当前用户评分列表 |
+| POST | `/api/ratings/submit` | 用户 | 批量新增或更新评分 |
+| GET | `/api/favorites/me` | 用户 | 当前用户收藏列表 |
+| POST | `/api/favorites/toggle` | 用户 | 新增、更新、取消或恢复收藏 |
+| GET | `/api/comments/movies/{movieid}/comments` | 公开 | 电影评论列表 |
+| POST | `/api/comments` | 用户 | 发布评论 |
+| GET | `/api/comments/me` | 用户 | 当前用户评论列表 |
+| DELETE | `/api/comments/{commentid}` | 评论作者 | 软删除自己的评论 |
+| POST | `/api/comments/{commentid}/like` | 用户 | 切换点赞状态 |
+| POST | `/api/comments/{commentid}/reports` | 用户 | 举报评论 |
+| GET | `/api/comments/admin/reports` | 管理员 | 举报列表 |
+| PUT | `/api/comments/admin/reports/{reportid}` | 管理员 | 处理举报 |
+| DELETE | `/api/comments/admin/{commentid}` | 管理员 | 管理员软删除评论 |
+| POST | `/api/recommend/generate` | 用户 | 提交推荐任务 |
+| GET | `/api/recommend/result` | 用户 | 查询当前用户推荐结果 |
+| GET | `/api/recommend/result/{userid}` | 用户，仅本人 | 按用户 ID 查询推荐结果 |
+| GET | `/api/recommend/similar/{movieid}` | 公开 | 相似电影列表 |
+| POST | `/api/recommend/event` | 用户 | 记录推荐行为事件 |
+| POST | `/api/admin/register` | Bootstrap Header | 注入普通管理员或超级管理员 |
+| POST | `/api/admin/login` | 公开 | 管理员登录 |
+| POST | `/api/admin/refresh` | 公开，需管理员 refresh token | 刷新管理员令牌 |
+| POST | `/api/admin/logout` | 管理员 | 管理员退出 |
+| GET | `/api/admin/me` | 管理员 | 当前管理员资料 |
+| GET | `/api/admin/users` | 超级管理员 | 用户列表 |
+| PUT | `/api/admin/users/{userid}` | 超级管理员 | 启用或禁用用户 |
+| DELETE | `/api/admin/users/{userid}` | 超级管理员 | 软删除用户 |
+| GET | `/api/admin/accounts` | 超级管理员 | 管理员账号列表 |
+| POST | `/api/admin/accounts` | 超级管理员 | 创建管理员账号 |
+| PUT | `/api/admin/accounts/{adminid}` | 超级管理员 | 修改管理员角色/状态 |
+| DELETE | `/api/admin/accounts/{adminid}` | 超级管理员 | 软删除管理员账号 |
+| GET | `/api/admin/audit/logs` | 管理员 | 管理操作日志 |
+| GET | `/api/admin/audit/like-events` | 管理员 | 评论点赞操作历史 |
 
-## 3. 服务状态
+未计入以上 OpenAPI 清单的隐藏兼容路由：`POST /api/auth/token`（Swagger OAuth2 表单）和 `POST /api/auth/register-legacy`。它们不作为前端业务 API 使用。
 
-### `GET /`
+## 请求和响应
 
-- 认证：不需要。
-- 成功：HTTP `200`。
+### 认证与账号
 
-```json
-{"message":"后端启动成功，数据库已连接！"}
-```
-
-## 4. 用户与认证
-
-认证接口前缀为 `/api/auth`。登录账号可使用昵称、手机号或邮箱。昵称与邮箱按不区分大小写的方式查找；手机号按数字字符串匹配。
-
-### `POST /api/auth/register`
-
-- 认证：不需要。
-- 成功：HTTP `201`。
-- 请求体：
-| 字段 | 类型 | 必填 | 约束 |
-|---|---|---:|---|
-| `username` | string | 是 | 2–50 字符；首尾空白会被去除 |
-| `password` | string | 是 | 8–255 字符，至少包含一个英文字母和一个数字 |
-| `confirm_password` | string | 是 | 8–255 字符，必须与 `password` 相同 |
-| `email` | string | 是 | 有效邮箱，最多 254 字符；保存前转为小写 |
-| `phone` | string | 是 | 1–32 位数字，不允许其他字符 |
-| `avatar` | string \| null | 否 | 最多 1000 字符；可省略或为 `null` |
-
-```json
-{
-  "username": "film_fan",
-  "password": "Movie1234",
-  "confirm_password": "Movie1234",
-  "email": "fan@example.com",
-  "phone": "13800138000",
-  "avatar": "https://example.com/avatar.jpg"
-}
-```
-
-成功响应：
-
-```json
-{"code":201,"msg":"注册成功","userid":123}
-```
-
-昵称（忽略大小写）、手机号或邮箱与未软删除账号重复时返回 HTTP `409`。
-
-### `POST /api/auth/login`
-
-- 认证：不需要。
-- 成功：HTTP `200`。
-- 请求字段：`account` 为规范字段；为兼容旧请求，也接受 `username`。
-- `account` 可填写昵称、手机号或邮箱。
+**注册** `POST /api/auth/register`：JSON 字段 `username`（2-50 字符）、`password` 和 `confirm_password`（8-255 字符，含字母和数字且相同）、`email`（有效邮箱）、`phone`（1-32 位数字）；`avatar` 可选字符串。昵称、邮箱按不区分大小写的方式检查冲突，邮箱保存为小写。示例：
 
 ```json
-{"account":"13800138000","password":"Movie1234"}
+{"username":"movie_fan","password":"Movie1234","confirm_password":"Movie1234","email":"fan@example.com","phone":"13800138000","avatar":null}
 ```
 
-兼容格式：
+成功 HTTP `201`，返回 `code`、`msg`、`userid`。账号冲突 `409`。
+
+**头像注册** `POST /api/auth/register-with-avatar`：multipart 字段为 `username`、`password`、`confirm_password`、`email`、`phone`，另有可选文件 `avatar`。文件上限 5 MiB；实现按上传 MIME 类型或扩展名校验，不等同于对图片内容解码验证。成功响应同 JSON 注册。
+
+**用户登录** `POST /api/auth/login`：`{"account":"13800138000","password":"Movie1234"}`。`account` 可为昵称、手机号或邮箱；兼容字段名 `username` 也可作为账号。成功返回 `access_token`、`refresh_token`、`token_type`、`expires_in`（900）、`refresh_expires_in`（604800）及 `userid`。无效凭据 `401`。
+
+**刷新令牌** `POST /api/auth/refresh`：`{"refresh_token":"<user-refresh-token>"}`。成功返回 `code` 和 `data` 中的新令牌对及有效秒数。
+
+**退出** `POST /api/auth/logout`：无请求体，需用户 Bearer token。服务端递增账号 `token_version`，当前及更早签发的令牌立即失效；客户端仍应清除本地令牌。
+
+**当前资料** `GET /api/auth/me` 返回 `data` 中的 `userid, username, email, phone, avatar`。`PUT /api/auth/me` 接收这些可更新字段的非空子集；身份字段不能设为 null，`avatar` 可设为 null 清除。空对象 `422`，冲突 `409`。
+
+**修改密码** `PUT /api/auth/me/password`：`{"old_password":"Movie1234","new_password":"Movie5678"}`。新密码 8-255 位且包含字母和数字；原密码错误 `400`。
+
+**申请重置码** `POST /api/auth/forgot-password/request`：`{"email":"fan@example.com"}`。未知邮箱使用通用成功提示；请求间隔 60 秒，验证码 10 分钟过期、最多尝试 5 次。需要 SMTP 配置。验证码当前保存在 API 进程内，多 worker 不共享且服务重启后丢失。
+
+**确认重置** `POST /api/auth/forgot-password/confirm`：`{"email":"fan@example.com","code":"123456","new_password":"Movie5678"}`。验证码必须是 6 位数字；密码需 8-255 位并包含字母、数字。
+
+### 电影与分类
+
+- `GET /api/movies/random`：无参数，返回 `data` 数组，最多 10 部有效电影，每项含 `movieid,moviename,picture`。
+- `GET /api/movies`：查询参数 `q`（电影名模糊查询，最多 100 字符）、`category_id`（正整数）、`sort_by=rating|popularity|release_time`（默认 `rating`）、`order=asc|desc`（默认 `desc`）、`page`（默认 1，最小 1）、`page_size`（默认 20，范围 1-100）。响应 `data={items,total,page,page_size}`；列表项含 `movieid,moviename,picture,averating,numrating,releasetime`。无效/已删除分类返回 `404`。列表缓存 TTL 为 120 秒。
+- `GET /api/movies/{movieid}`：返回 `data` 中电影详情字段 `movieid,moviename,releasetime,director,leadactors,picture,averating,numrating,description,typelist,categories`；`categories` 是 `{categoryid,name}` 数组，无分类时为空数组。缺失或已删除电影 `404`。
+- `GET /api/movies/categories`：返回有效分类的 `data` 数组，每项 `{categoryid,name}`。
+- `POST /api/movies`：管理员创建电影。必填正整数 `movieid`、`moviename`；可选 `releasetime`（`YYYY-MM-DD`）、`director,leadactors,picture,description,typelist`、`category_ids`（最多 100 个分类 ID）。`movieid` 沿用现有数据主键，不自动生成。成功 `201`。
+- `PUT /api/movies/{movieid}`：管理员可提交上述可更新字段的非空子集；`category_ids` 一旦提供即替换全部关联，空数组清空关联。
+- `DELETE /api/movies/{movieid}`：管理员软删除电影。
+- `POST /api/movies/categories`：管理员 JSON `{"name":"Drama"}`，成功 `201`。
+- `PUT /api/movies/categories/{categoryid}`：管理员 JSON `{"name":"New name"}`。
+- `DELETE /api/movies/categories/{categoryid}`：管理员软删除分类并清除电影分类关联。
+
+### 评分、收藏与评论
+
+**评分提交** `POST /api/ratings/submit`：
 
 ```json
-{"username":"film_fan","password":"Movie1234"}
+{"movieids":[1,2],"ratings":[9,8]}
 ```
 
-成功响应：
+数组必须非空且长度相同，电影 ID 为正整数且批次内不重复，分数为 1-10 整数。可选兼容字段 `userid` 必须等于 token 用户 ID。已存在评分更新，不存在则新增；写入使用事务。成功返回 `count`。不存在/软删除电影 `404`，用户 ID 不匹配 `403`。
+
+**我的评分** `GET /api/ratings/me`：分页参数 `page` 默认 1、`page_size` 默认 20（1-100）；返回 `data={items,total,page,page_size}`，评分项含 `ratingid,movieid,moviename,picture,rating,rated_at`。
+
+**我的收藏** `GET /api/favorites/me`：相同分页参数，另可传 `status=want_to_watch|watched`。列表项含 `movieid,moviename,picture,status,created_at,updated_at`。
+
+**切换收藏** `POST /api/favorites/toggle`：`{"movieid":1,"status":"want_to_watch"}`，状态也可为 `watched`。新建时添加；对当前相同状态再次调用会软删除；不同状态会更新；对软删除记录调用会恢复。响应 `action` 为 `add|remove|update`。
+
+**电影评论** `GET /api/comments/movies/{movieid}/comments`：分页参数 `page`、`page_size` 同上。返回未删除且对外可见的评论列表，含评论内容、用户信息、点赞数、当前用户 `liked` 状态及分页字段。当前 `review_pending` 评论仍可见。
+
+**发布评论** `POST /api/comments`：`{"movieid":1,"content":"A review"}`，内容去除首尾空格后需 1-500 字符，成功 `201`。
+
+**我的评论** `GET /api/comments/me`：分页参数同上。**删除评论** `DELETE /api/comments/{commentid}`：仅作者可删，软删除。
+
+**点赞** `POST /api/comments/{commentid}/like`：无请求体，切换当前点赞状态并记录操作事件；响应 `data.liked` 表示操作后的状态。
+
+**举报** `POST /api/comments/{commentid}/reports`：原因枚举 `malicious_attack|insulting_language|harmful_information|excessive_promotion|advertisement|other`。`other` 必须提供非空 `reason_detail`（最多 500 字符）；同用户重复举报 `409`。新举报使评论进入 `review_pending`，在管理员结案前仍展示。
+
+**举报列表** `GET /api/comments/admin/reports`：管理员可选查询 `status=pending|accepted|rejected`；返回数组，目前无分页。
+
+**处理举报** `PUT /api/comments/admin/reports/{reportid}`：`{"status":"accepted"}` 或 `{"status":"rejected"}`。接受后评论隐藏，驳回后恢复发布；已处理举报 `409`，不存在 `404`。管理员删除评论：`DELETE /api/comments/admin/{commentid}`，执行软删除。
+
+### 推荐
+
+**生成推荐** `POST /api/recommend/generate`：用户 Bearer token，无请求体。成功 HTTP `202`，返回 `request_id`、Celery `task_id`。队列不可用返回 `503`。
+
+**查询结果** `GET /api/recommend/result` 查询当前用户；`GET /api/recommend/result/{userid}` 只允许查询自己的 ID，否则 `403`。尚无结果时返回空 `items` 和空 `request_id`。结果项包含 `movieid,moviename,picture,position,prediction_score`。
+
+当前 Celery 任务写入的是 popularity 排序的 `popularity-v1` 回退结果，按电影现有平均评分填充 `prediction_score`，并非 ALS 模型预测值。ALS/Spark 算法由算法负责人实现，本契约不承诺其已完成。结果缓存 TTL 为 300 秒。
+
+**相似电影** `GET /api/recommend/similar/{movieid}?limit=10`：公开访问，`limit` 默认 10、范围 1-50；当前使用类型字符串和热度排序回退逻辑。
+
+**推荐事件** `POST /api/recommend/event`：`{"request_id":"<request_id>","movieid":1,"event_type":"impression"}`。事件类型为 `impression|click|not_interested`；请求批次和电影必须属于当前用户且电影有效。
+
+### 管理员与审计
+
+管理员角色：`admin` 为普通管理员；`superadmin` 可管理用户和管理员账号。电影、分类、评论维护及举报处理对两种管理员开放。
+
+**注入管理员** `POST /api/admin/register`：仅用于管理员初始化/数据注入，不提供给前端注册流程。请求头 `X-Admin-Bootstrap-Token: <ADMIN_BOOTSTRAP_TOKEN>`，JSON：
 
 ```json
-{
-  "code":200,
-  "msg":"登录成功",
-  "access_token":"<JWT>",
-  "token_type":"bearer",
-  "userid":123
-}
+{"username":"root_admin","password":"Admin1234","role":"superadmin"}
 ```
 
-账号或密码错误返回 HTTP `401`。
+`role` 为 `admin|superadmin`；密码 8-255 位且包含字母和数字。成功 HTTP `201`；未配置服务端 token 为 `503`，请求头错误 `401`，账号重复 `409`。
 
-### `GET /api/auth/me`
+**管理员登录** `POST /api/admin/login`：`{"username":"admin","password":"Admin1234"}`。成功返回 `data` 中令牌对、有效时间和 `role`。`POST /api/admin/refresh` 使用 `{"refresh_token":"<admin-refresh-token>"}`。`POST /api/admin/logout` 无请求体，需管理员 token；服务端递增管理员 `token_version`，当前及更早签发的令牌立即失效。`GET /api/admin/me` 返回当前 `adminid,username,role`。
 
-- 认证：需要 Bearer Token。
-- 成功：HTTP `200`。
+**用户管理**（仅超级管理员）：`GET /api/admin/users` 支持 `page`（默认 1）、`page_size`（默认 20，1-100）、`status=active|disabled`；列表当前也会包含软删除用户。`PUT /api/admin/users/{userid}` 请求 `{"status":"disabled"}` 或 `{"status":"active"}`。`DELETE /api/admin/users/{userid}` 软删除。
 
-```json
-{
-  "code":200,
-  "data":{
-    "userid":123,
-    "username":"film_fan",
-    "email":"fan@example.com",
-    "phone":"13800138000",
-    "avatar":"https://example.com/avatar.jpg"
-  }
-}
-```
+**管理员账号管理**（仅超级管理员）：`GET /api/admin/accounts` 无分页；`POST /api/admin/accounts` 请求字段同注入管理员，不需要 Bootstrap Header；`PUT /api/admin/accounts/{adminid}` 可传 `role`、`status`（`active|disabled`）中的一个或两个，例如 `{"role":"admin","status":"active"}`；`DELETE /api/admin/accounts/{adminid}` 软删除。不能禁用或删除当前登录的管理员。
 
-### `PUT /api/auth/me`
+**操作日志** `GET /api/admin/audit/logs`：管理员可查，`page` 默认 1，`page_size` 默认 20（1-100），可选精确筛选 `action`（最多 100 字符）、`target_type`（最多 50 字符）。响应 `data={items,total,page,page_size}`。
 
-- 认证：需要 Bearer Token。
-- 成功：HTTP `200`。
-- 可修改字段：`username`、`email`、`phone`、`avatar`。只提交需要修改的字段；未提交字段保持不变。
-- `username`、`email`、`phone` 不能显式传 `null`；`avatar` 可传 `null` 清除头像。
-- 昵称长度为 2–50；邮箱必须有效且最多 254 字符；手机号为 1–32 位数字。
-- 空请求体返回 `422`。昵称、手机号或邮箱与其他未软删除账号重复时返回 `409`。
+**点赞事件日志** `GET /api/admin/audit/like-events`：管理员可查，支持相同分页参数及可选 `action` 筛选，返回 `data={items,total,page,page_size}`。
 
-```json
-{"username":"movie_fan","avatar":null}
-```
+## 实现边界与联调注意
 
-成功响应：
+- `backend/app/analytics.py` 当前没有挂载 FastAPI 路由，因此数据分析需求不是可调用的 HTTP API。
+- 根路径 `/` 返回简单服务消息，不代表 MySQL、Redis、SMTP 或 Celery 都通过健康检查。
+- API 代码使用的表、列、索引和唯一约束必须与实际 MySQL 数据库一致。本文不创建、迁移或修改数据库结构；部署环境是否已应用迁移需单独核对。
+- 报告列表未分页；举报处理、评论状态更新和审计日志写入不是同一事务，数据库异常时可能部分完成。
+- 刷新 token 当前未做服务端单次轮换；登出、改密、重置密码以及管理员/用户状态变更会递增 `token_version`，使旧令牌失效。用户/管理员被禁用或软删除后，后续认证请求也会因重新加载账号而失败。
+- 静态导入/OpenAPI 检查不等于真实 MySQL、Redis、SMTP、Celery Worker 端到端测试。前端联调前应在目标环境分别验证这些依赖。
 
-```json
-{"code":200,"msg":"资料修改成功"}
-```
+## Swagger 联调顺序
 
-### `PUT /api/auth/me/password`
-
-- 认证：需要 Bearer Token。
-- 成功：HTTP `200`。
-- 新密码长度为 8–255，且必须包含英文字母和数字。
-
-```json
-{"old_password":"Movie1234","new_password":"NewMovie5678"}
-```
-
-成功响应：`{"code":200,"msg":"密码修改成功"}`。原密码错误返回 HTTP `400`。修改密码后，已签发 Token 仍可继续使用，直到过期或账号被禁用/软删除。
-
-## 5. 电影
-
-电影查询接口不需要认证；所有电影查询均排除 `deleted_at` 非空的软删除电影。当前没有分类列表接口。
-
-### `GET /api/movies/random`
-
-- 认证：不需要。
-- 成功：HTTP `200`。
-- 从按 `movieid` 升序的有效电影中随机选择起始位置，返回最多 10 条连续记录。
-- 空库返回 `{"code":200,"data":[]}`。
-
-```json
-{
-  "code":200,
-  "data":[
-    {"movieid":1,"moviename":"电影名称","picture":"https://example.com/movie.jpg"}
-  ]
-}
-```
-
-### `GET /api/movies`
-
-- 认证：不需要。
-- 成功：HTTP `200`。
-- 查询参数：
-| 参数 | 类型 | 默认值 | 约束与说明 |
-|---|---|---:|---|
-| `q` | string | 无 | 最多 100 字符；按电影名模糊搜索，不搜索导演或演员 |
-| `category_id` | integer | 无 | 正整数；分类不存在或已软删除时返回 `404` |
-| `sort_by` | string | `rating` | `rating`、`popularity`、`release_time`；`popularity` 按评分人数 `numrating` 排序 |
-| `order` | string | `desc` | `asc` 或 `desc` |
-| `page` | integer | `1` | 大于等于 1 |
-| `page_size` | integer | `20` | 1–100 |
-
-示例：`GET /api/movies?q=%E6%98%9F&category_id=2&page=1&page_size=20&sort_by=rating&order=desc`
-
-成功响应中的 `data.items` 每项包含 `movieid`、`moviename`、`picture`、`averating`、`numrating`、`releasetime`；除 `movieid` 外，电影资料字段可能为 `null`。
-
-```json
-{
-  "code":200,
-  "data":{
-    "items":[
-      {
-        "movieid":1,
-        "moviename":"电影名称",
-        "picture":"https://example.com/movie.jpg",
-        "averating":8.5,
-        "numrating":120,
-        "releasetime":"2024-01-01"
-      }
-    ],
-    "total":1,
-    "page":1,
-    "page_size":20
-  }
-}
-```
-
-没有匹配项时 `items` 为空数组，`total` 为 `0`。当前没有分类枚举接口，前端需要从其他已约定来源取得 `category_id`。
-
-### `GET /api/movies/{movieid}`
-
-- 认证：不需要。
-- 路径参数：`movieid`，整数。
-- 成功：HTTP `200`；电影不存在或已软删除返回 HTTP `404`。
-- `data` 包含 `movieid`、`moviename`、`releasetime`、`director`、`leadactors`、`picture`、`averating`、`numrating`、`description`、`typelist`。除 `movieid` 外字段可能为 `null`。
-
-```json
-{
-  "code":200,
-  "data":{
-    "movieid":1,
-    "moviename":"电影名称",
-    "releasetime":"2024-01-01",
-    "director":"导演",
-    "leadactors":"主演",
-    "picture":"https://example.com/movie.jpg",
-    "averating":8.5,
-    "numrating":120,
-    "description":"电影简介",
-    "typelist":"剧情,科幻"
-  }
-}
-```
-
-## 6. 评分
-
-评分接口需要 Bearer Token。评分用户始终由 Token 确定。
-
-### `POST /api/ratings/submit`
-
-- 成功：HTTP `200`。
-- `movieids` 与 `ratings` 必须为非空数组且长度一致；电影 ID 必须为正整数且同一批次不可重复；评分必须为 1–10 的整数。
-- 每个用户对同一电影只有一条评分；重复提交会更新评分。整批写入在同一数据库事务中完成。
-- 可选字段 `userid` 仅为兼容旧请求；若传入，必须与 Token 用户 ID 一致。
-
-```json
-{
-  "movieids":[1,2],
-  "ratings":[9,7]
-}
-```
-
-成功响应：
-
-```json
-{"code":200,"msg":"评分提交成功","count":2}
-```
-
-`userid` 不匹配返回 `403`；电影不存在或已软删除返回 `404`，其 `detail` 包含缺失 ID：
-
-```json
-{"detail":{"message":"电影不存在或已删除","movieids":[2]}}
-```
-
-### `GET /api/ratings/me`
-
-- 认证：需要 Bearer Token。
-- 查询参数：`page` 默认 `1` 且大于等于 1；`page_size` 默认 `20`，范围 1–100。
-- 按评分时间从新到旧分页；只返回关联电影未软删除的评分。
-- 成功响应项包含 `ratingid`、`movieid`、`moviename`、`picture`、`rating`、`rated_at`。
-
-```json
-{
-  "code":200,
-  "data":{
-    "items":[
-      {
-        "ratingid":10,
-        "movieid":1,
-        "moviename":"电影名称",
-        "picture":null,
-        "rating":9,
-        "rated_at":"2026-10-22T08:00:00Z"
-      }
-    ],
-    "total":1,
-    "page":1,
-    "page_size":20
-  }
-}
-```
-
-## 7. 收藏
-
-收藏接口需要 Bearer Token。`status` 可取 `want_to_watch`（想看）或 `watched`（已看）。
-
-### `GET /api/favorites/me`
-- 查询当前用户未取消、且关联电影未软删除的收藏。
-- 查询参数：`page` 默认 `1` 且大于等于 1；`page_size` 默认 `20`，范围 1–100；`status` 可选，值为 `want_to_watch` 或 `watched`。
-- 成功响应项包含 `movieid`、`moviename`、`picture`、`status`、`created_at`、`updated_at`。
-
-示例：`GET /api/favorites/me?status=want_to_watch&page=1&page_size=20`
-
-```json
-{
-  "code":200,
-  "data":{
-    "items":[
-      {
-        "movieid":1,
-        "moviename":"电影名称",
-        "picture":"https://example.com/movie.jpg",
-        "status":"want_to_watch",
-        "created_at":"2026-10-22T08:00:00Z",
-        "updated_at":"2026-10-22T08:00:00Z"
-      }
-    ],
-    "total":1,
-    "page":1,
-    "page_size":20
-  }
-}
-```
-
-### `POST /api/favorites/toggle`
-
-- 请求体：
-```json
-{"movieid":1,"status":"want_to_watch"}
-```
-
-- `movieid` 必须为正整数；`status` 必须为 `want_to_watch` 或 `watched`。
-- 首次请求新增收藏；已有软删除记录时恢复；已收藏且状态相同则软删除取消；状态不同时更新状态。
-- 电影不存在或已软删除返回 `404`；并发唯一性冲突返回 `409`。
-
-| 结果 | `action` | `msg` |
-|---|---|---|
-| 新增或恢复 | `add` | `收藏成功` |
-| 取消 | `remove` | `已取消收藏` |
-| 修改状态 | `update` | `收藏状态已更新` |
-
-成功响应示例：`{"code":200,"msg":"收藏成功","action":"add"}`。
-
-## 8. 推荐
-
-推荐接口需要 Bearer Token，推荐结果与事件均限定为当前登录用户。
-
-### `POST /api/recommend/generate`
-
-- 当前 Celery/Spark 推荐任务服务尚未配置。
-- 此接口目前固定返回 HTTP `503`，不会创建任务或返回 `request_id`。
-
-```json
-{"detail":"推荐生成任务服务尚未配置"}
-```
-
-### `GET /api/recommend/result`
-
-- 查询当前用户最新一批已持久化推荐，不接受用户 ID 参数。
-- 成功：HTTP `200`。没有结果时返回 `request_id: null` 和空 `items`。
-- 推荐项包含 `movieid`、`moviename`、`position`、`prediction_score`；`prediction_score` 可能为 `null`。已软删除电影会从响应中排除。
-
-```json
-{
-  "code":200,
-  "request_id":"request-id",
-  "items":[
-    {"movieid":1,"moviename":"电影名称","position":1,"prediction_score":4.8}
-  ]
-}
-```
-
-### `POST /api/recommend/event`
-
-- 请求体：
-| 字段 | 类型 | 约束 |
-|---|---|---|
-| `request_id` | string | 1–64 字符 |
-| `movieid` | integer | 正整数 |
-| `event_type` | string | `impression`、`click` 或 `not_interested` |
-
-```json
-{
-  "request_id":"request-id",
-  "movieid":1,
-  "event_type":"impression"
-}
-```
-
-推荐项属于当前用户且电影有效时，成功响应为 HTTP `200`：`{"code":200,"msg":"事件已记录"}`。推荐项不属于当前用户，或电影不存在/已软删除时返回 `404`。每次成功请求都会新增事件记录，服务端不做重复事件去重；曝光事件应在推荐项实际进入可视区域后发送。
-
-## 9. 当前未提供的接口
-以下功能尚无可调用 API：分类列表/详情与管理、评论发布/查询、点赞、举报与审核、管理员管理、用户禁用/恢复、找回密码、退出登录/服务端 Token 撤销、ALS 推荐生成任务、数据分析。电影列表虽支持 `category_id` 筛选，但没有分类枚举接口；电影搜索目前只匹配电影名。数据库中存在相关模型或表，不代表对应 API 已实现。
+1. 从 `backend` 目录启动 API：`uvicorn app.main:app --reload --port 8000`，打开 `http://127.0.0.1:8000/docs`。
+2. 调用用户注册、登录。可在 **Authorize** 弹窗输入 OAuth 表单的账号和密码；也可以在业务请求中手动使用登录返回的 access token。
+3. 调用个人资料、评分、收藏、评论和推荐接口。头像上传单独调用 `POST /api/auth/register-with-avatar`。
+4. 用 `X-Admin-Bootstrap-Token` 初始化管理员，再通过管理员登录获取 token。分别验证普通管理员和超级管理员权限。
+5. 使用错误参数验证 `422`，不带 token 验证 `401`，使用错误角色/他人 userid 验证 `403`，重复或不存在资源验证 `409/404`。
+6. 对照实际部署数据库中的 `user`、`adminuser`、`movieinfo`、`category`、`moviecategory`、`personalratings`、`userfavorite`、`moviecomment`、`commentlike`、`commentlike_event`、`commentreport`、`adminoperationlog`、`recommendationitem`、`recommendationevent` 表检查落盘。字段和约束以当前 `models.py` 及实际数据库结构为准。
