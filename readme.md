@@ -6,8 +6,20 @@
 
 - 后端：Python、FastAPI、Tortoise ORM、MySQL（`asyncmy`）和 JWT 认证。
 - 前端：`frontend/` 下的静态 HTML、CSS 和原生 JavaScript，无 Node.js、npm 或构建步骤。
-- 推荐接口：`POST /api/recommend/generate` 当前按接口约定返回 `503`，推荐任务服务尚未接入。
-- 数据分析：`backend/app/analytics.py` 提供评分、评论、收藏和推荐事件聚合查询。
+
+## 功能概述
+
+- **注册、登录与令牌**：用户可以通过 JSON 注册，也可以使用单独的头像注册接口上传图片；登录支持用户名、手机号或邮箱。密码以哈希形式保存。认证接口提供访问令牌签发、刷新和退出登录；退出或账号状态变化后，旧令牌可按后端的令牌校验逻辑失效。忘记密码时，用户可申请邮箱验证码，并提交验证码和新密码完成重置。
+- **个人资料与密码**：登录用户可以查看自己的账号资料，更新可编辑的个人信息和头像，并通过验证旧密码修改密码。个人接口以当前登录身份为操作对象，不能通过请求参数指定其他用户。
+- **电影查询**：未登录用户可获取随机电影、分页浏览电影列表、按电影名称搜索、按分类筛选，并选择支持的排序方式；电影详情接口返回电影信息及关联分类。分类列表也可公开查询。
+- **电影与分类维护**：管理员可以新增、编辑和软删除电影，维护电影基础信息及分类关联；也可以新增、编辑和软删除分类。管理写操作需要管理员身份，普通管理员与超级管理员的权限按接口依赖控制。
+- **评分**：登录用户可以批量提交多部电影的评分，也可以分页查看自己的评分。对同一部电影再次提交时，接口用于更新该用户已有的评分。
+- **收藏**：登录用户可以分页查看自己的收藏，并通过切换接口添加收藏、改变“想看/看过”等状态或取消收藏。取消后的记录按后端软删除逻辑处理，重复操作可根据现有记录恢复或更新收藏状态。
+- **评论、点赞与举报**：用户可查看电影评论、发布评论、分页查看自己的评论，并软删除自己的评论；登录用户可切换评论点赞状态、提交评论举报。管理员可查看举报列表、更新举报处理状态，并从管理接口删除评论。
+- **管理员与审计**：管理员使用独立的登录、令牌刷新、退出和个人信息接口。管理后台提供操作日志、点赞事件记录、用户列表及用户状态管理等接口。超级管理员可以软删除用户，并创建、编辑和软删除管理员账号；首次创建管理员账号使用带引导令牌保护的注册接口。
+- **推荐业务接口**：登录用户可以请求生成自己的推荐内容、查询推荐结果、查询指定电影的相似电影，并记录推荐曝光、点击或不感兴趣等反馈事件。推荐结果的具体计算方式由推荐模块实现，接口以统一的请求和响应格式向前端提供结果。
+
+以上按当前后端 HTTP 接口说明业务能力，不代表所有部署环境均已完成端到端验证。具体路径、请求参数、响应和权限以 Swagger 与 [API 契约](backend/app/api/api_contract.md) 为准。
 
 ## 目录结构
 
@@ -20,10 +32,13 @@
 │   │   ├── models.py            # Tortoise ORM 模型
 │   │   ├── schemas.py           # Pydantic 请求模型和校验
 │   │   ├── auth.py              # JWT 和密码哈希
-│   │   ├── analytics.py         # 聚合分析查询
-│   │   └── api/                 # 用户、电影、评分、收藏、推荐路由
+│   │   ├── analytics.py         # 尚未挂载为 HTTP 路由的聚合查询
+│   │   ├── email_service.py     # SMTP 邮件发送
+│   │   ├── avatar_storage.py    # 头像文件保存
+│   │   └── api/                 # 认证、电影、评分、收藏、评论、推荐、管理路由
 │   ├── migrations/              # SQL 和 Aerich 迁移文件
 │   └── pyproject.toml           # Aerich/Tortoise 配置
+├── database/seed/               # 数据生成与校验脚本
 ├── frontend/
 │   ├── index.html               # 前端页面入口
 │   ├── css/style.css            # 页面样式
@@ -49,15 +64,23 @@
 
 ## 配置环境变量
 
-复制 `.env.example` 为根目录 `.env`，并填写数据库地址和 JWT 密钥：
+复制 `.env.example` 为项目根目录 `.env`，填写数据库密码、JWT 密钥和其他需要的配置。不要提交真实 `.env` 或密钥。
 
 ```env
 DATABASE_URL=mysql://root:123456@localhost:3306/movierecommend
 SECRET_KEY=请替换为随机且足够长的密钥
+ADMIN_BOOTSTRAP_TOKEN=generate-a-separate-random-bootstrap-token
 CORS_ORIGINS=http://127.0.0.1:8001,http://localhost:8001
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USER=your-mailbox@qq.com
+SMTP_PASSWORD=your-mailbox-authorization-code
+SMTP_FROM=your-mailbox@qq.com
+SMTP_USE_SSL=true
+SMTP_TIMEOUT=15
 ```
 
-`SECRET_KEY` 用于 JWT 签名，生产环境必须使用随机值。`.env` 已被 Git 忽略，不应提交真实密钥。
+`SECRET_KEY` 用于 JWT 签名，生产环境必须使用独立随机值。邮件找回密码还需配置 SMTP；管理员首次注入需配置 `ADMIN_BOOTSTRAP_TOKEN`。`.env.example` 列出了完整变量模板。
 
 ## 安装后端依赖
 
@@ -122,11 +145,10 @@ python -m http.server 8001 --directory frontend
 
 接口详细请求体、认证方式和响应结构见 [backend/app/api/api_contract.md](backend/app/api/api_contract.md)。
 
-- 认证：`POST /api/auth/register`、`POST /api/auth/login`、`GET/PUT /api/auth/me`、`PUT /api/auth/me/password`
-- 电影：`GET /api/movies/random`、`GET /api/movies`、`GET /api/movies/{movieid}`
-- 评分：`POST /api/ratings/submit`、`GET /api/ratings/me`
-- 收藏：`GET /api/favorites/me`、`POST /api/favorites/toggle`
-- 推荐：`POST /api/recommend/generate`、`GET /api/recommend/result`、`POST /api/recommend/event`
+- 认证与账号：注册、登录、刷新/退出、个人资料/密码、邮箱找回密码；头像上传使用 `POST /api/auth/register-with-avatar`。
+- 电影与分类：随机、搜索/筛选/排序、详情、分类查询，以及管理员电影/分类维护。
+- 用户互动：评分、收藏、评论、点赞和举报；管理端包含用户/管理员账号管理、审计日志及评论举报处理。
+- 推荐：生成请求、结果查询、相似电影和推荐事件记录。
 
 除注册接口外，受保护接口需要添加请求头：
 
@@ -136,7 +158,8 @@ Authorization: Bearer <access_token>
 
 ## 数据库迁移
 
-业务升级 SQL 位于 `backend/migrations/0001_schema_upgrade.sql`，执行前请备份数据库并确认目标库。Aerich 配置位于 `backend/pyproject.toml`；执行 Aerich 命令时建议将工作目录切换到 `backend/`，以使用相对迁移路径。
+SQL 升级脚本位于 `backend/migrations/`：`0001_schema_upgrade.sql` 升级基础业务表结构，`0002_delivery_indexes_and_legacy_recommend.sql` 补充索引及旧推荐表字段，`0003_auth_token_version.sql` 为用户和管理员表添加 JWT 失效控制字段。它们不是 API 启动时执行的自动迁移；在已有数据库上手动执行前，先备份并核对目标库及脚本影响。
+
 
 ## 停止服务
 
