@@ -60,3 +60,11 @@
 全量执行时已将曝光校验、首次点赞时间校验及旧结果镜像校验改为聚合后关联，避免在初始统计信息不足时进行大量逐行相关查询；修复后的完整数据校验通过。脚本也已改进连接丢失时的回滚与锁释放错误报告。
 
 再次执行 append 会新增另一批数据。重复使用本次 run-tag 会被拒绝；若要重建全部九张目标表，须明确使用 rebuild，并先评估数据覆盖和非目标表引用。
+# 数据库结构升级提示
+
+如果现有数据库在运行找回密码、登出或令牌刷新接口时出现 `Unknown column 'token_version'`，请先执行 `backend/migrations/0003_auth_token_version.sql`。该迁移为幂等脚本，会为 `user` 和 `adminuser` 补充 `token_version INT NOT NULL DEFAULT 0`，不会清空模拟数据。执行后重启 API，并用以下语句确认字段已存在：
+
+```sql
+SHOW COLUMNS FROM `user` LIKE 'token_version';
+SHOW COLUMNS FROM `adminuser` LIKE 'token_version';
+```
