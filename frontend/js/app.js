@@ -925,14 +925,14 @@
       let myScoreSel = myScore;
       const starWidget = this.buildStarsInput(myScore, value => {
         myScoreSel = value;
-        document.getElementById('rateWord').textContent = value ? value + '分 · ' + this.scoreWord(value) : '';
+        document.getElementById('rateWord').textContent = value === null ? '' : value + '分 · ' + this.scoreWord(value);
       }, true);
       document.getElementById('detailStars').appendChild(starWidget);
-      document.getElementById('rateWord').textContent = myScoreSel ? myScoreSel + '分 · ' + this.scoreWord(myScoreSel) : '';
+      document.getElementById('rateWord').textContent = myScoreSel === null ? '' : myScoreSel + '分 · ' + this.scoreWord(myScoreSel);
 
       document.getElementById('submitScoreBtn').addEventListener('click', async () => {
         if (!this.requireAuth()) return;
-        if (!myScoreSel) { UI.toast('请先点亮星星选择评分', 'warn'); return; }
+        if (myScoreSel === null) { UI.toast('请先选择评分', 'warn'); return; }
         const btn = document.getElementById('submitScoreBtn');
         btn.disabled = true;
         try {
@@ -1003,32 +1003,31 @@
     },
 
     scoreWord(v) {
-      return ({ 2: '很差', 4: '较差', 6: '还行', 8: '推荐', 10: '力荐' })[v] || '';
+      return ({ 1: '较差', 2: '还行', 3: '推荐', 4: '很好', 5: '力荐' })[v] || '';
     },
 
-    /* 构建交互式 5 星打分组件（映射 1-10 分） */
+    /* null means no rating has been selected. */
     buildStarsInput(initial, onChange, showBig) {
       const wrap = document.createElement('div');
       wrap.className = 'stars-input' + (showBig ? ' big' : '');
-      let val = initial || 0;
-      const labels = { 2: '很差', 4: '较差', 6: '还行', 8: '推荐', 10: '力荐' };
+      let val = Number.isInteger(initial) && initial >= 1 && initial <= 5 ? initial : null;
       const paint = (hover) => {
         wrap.querySelectorAll('.si-star').forEach(s => {
           const sv = Number(s.dataset.v);
-          s.classList.toggle('on', hover ? sv <= hover : sv <= val);
+          s.classList.toggle('on', hover === null ? sv <= (val === null ? -1 : val) : sv <= hover);
         });
       };
       for (let i = 1; i <= 5; i++) {
         const star = document.createElement('button');
         star.type = 'button';
-        star.className = 'si-star' + (i * 2 <= val ? ' on' : '');
-        star.dataset.v = i * 2;
-        star.title = labels[i * 2] + '（' + i * 2 + ' 分）';
+        star.className = 'si-star' + (val !== null && i <= val ? ' on' : '');
+        star.dataset.v = i;
+        star.title = i + ' 分 · ' + this.scoreWord(i);
         star.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>`;
-        star.addEventListener('mouseenter', () => paint(i * 2));
+        star.addEventListener('mouseenter', () => paint(i));
         star.addEventListener('mouseleave', () => paint(null));
         star.addEventListener('click', () => {
-          val = val === i * 2 ? 0 : i * 2;
+          val = val === i ? null : i;
           paint(null);
           if (onChange) onChange(val);
         });
@@ -1066,23 +1065,27 @@
       this.quickSelections = {};
       const renderStrip = () => {
         track.innerHTML = items.map(m => {
-          const sel = this.quickSelections[m.movieid] || 0;
+          const sel = Object.hasOwn(this.quickSelections, m.movieid) ? this.quickSelections[m.movieid] : null;
           const zh = m.name_zh || m.moviename;
           return `
             <div class="quick-card" data-id="${m.movieid}">
               ${UI.posterImg(m.picture, zh, 'quick-poster')}
               <div class="quick-name">${UI.esc(zh)}</div>
-              <div class="quick-stars" data-movie="${m.movieid}">${'<button type="button" class="qs-star" data-v="2">★</button><button type="button" class="qs-star" data-v="4">★</button><button type="button" class="qs-star" data-v="6">★</button><button type="button" class="qs-star" data-v="8">★</button><button type="button" class="qs-star" data-v="10">★</button>'}</div>
+              <div class="quick-stars" data-movie="${m.movieid}">${'<button type="button" class="qs-star" data-v="1">★</button><button type="button" class="qs-star" data-v="2">★</button><button type="button" class="qs-star" data-v="3">★</button><button type="button" class="qs-star" data-v="4">★</button><button type="button" class="qs-star" data-v="5">★</button>'}</div>
             </div>`;
         }).join('');
         track.querySelectorAll('.quick-card').forEach(card => {
           const id = Number(card.dataset.id);
           const stars = card.querySelectorAll('.qs-star');
-          const paint = () => stars.forEach(s => s.classList.toggle('on', Number(s.dataset.v) <= (this.quickSelections[id] || 0)));
+          const paint = () => {
+            const selected = Object.hasOwn(this.quickSelections, id) ? this.quickSelections[id] : null;
+            stars.forEach(s => s.classList.toggle('on', selected !== null && Number(s.dataset.v) <= selected));
+          };
           paint();
           stars.forEach(s => s.addEventListener('click', () => {
             const v = Number(s.dataset.v);
-            this.quickSelections[id] = this.quickSelections[id] === v ? 0 : v;
+            if (this.quickSelections[id] === v) delete this.quickSelections[id];
+            else this.quickSelections[id] = v;
             paint();
             this.updateBatchBtn();
           }));
@@ -1096,16 +1099,14 @@
 
       const btn = document.getElementById('batchSubmitBtn');
       this.updateBatchBtn = () => {
-        const n = Object.values(this.quickSelections).filter(Boolean).length;
+        const n = Object.keys(this.quickSelections).length;
         btn.textContent = '批量提交评分 (' + n + ')';
         btn.disabled = n === 0;
       };
       btn.addEventListener('click', async () => {
         if (!this.requireAuth()) return;
         const ids = [], scores = [];
-        Object.keys(this.quickSelections).forEach(id => {
-          if (this.quickSelections[id]) { ids.push(Number(id)); scores.push(this.quickSelections[id]); }
-        });
+        Object.keys(this.quickSelections).forEach(id => { ids.push(Number(id)); scores.push(this.quickSelections[id]); });
         if (!ids.length) return;
         btn.disabled = true;
         try {
@@ -1193,31 +1194,32 @@
               ${UI.posterImg(m.picture, zh, 'rate-card-poster')}
               <div class="rate-card-name">${UI.esc(zh)}</div>
               <div class="rate-card-sub">${UI.esc(UI.fmtYear(m.releasetime) || '')}${m.averating ? ' · 均分 ' + UI.fmtRating(m.averating) : ''}</div>
-              <div class="rate-card-stars">${'<button type="button" class="rc-star" data-v="2">★</button><button type="button" class="rc-star" data-v="4">★</button><button type="button" class="rc-star" data-v="6">★</button><button type="button" class="rc-star" data-v="8">★</button><button type="button" class="rc-star" data-v="10">★</button>'}</div>
+              <div class="rate-card-stars">${'<button type="button" class="rc-star" data-v="1">★</button><button type="button" class="rc-star" data-v="2">★</button><button type="button" class="rc-star" data-v="3">★</button><button type="button" class="rc-star" data-v="4">★</button><button type="button" class="rc-star" data-v="5">★</button>'}</div>
               <div class="rate-card-word"></div>
             </div>`;
         }).join('');
 
-        const words = { 2: '很差', 4: '较差', 6: '还行', 8: '推荐', 10: '力荐' };
+        const words = { 1: '较差', 2: '还行', 3: '推荐', 4: '很好', 5: '力荐' };
         grid.querySelectorAll('.rate-card').forEach(card => {
           const id = Number(card.dataset.id);
           const stars = card.querySelectorAll('.rc-star');
           const wordEl = card.querySelector('.rate-card-word');
           const paint = () => {
-            const v = self.rateSelections[id] || 0;
-            stars.forEach(s => s.classList.toggle('on', Number(s.dataset.v) <= v));
-            wordEl.textContent = v ? v + '分 · ' + words[v] : '';
+            const v = Object.hasOwn(self.rateSelections, id) ? self.rateSelections[id] : null;
+            stars.forEach(s => s.classList.toggle('on', v !== null && Number(s.dataset.v) <= v));
+            wordEl.textContent = v === null ? '' : v + '分 · ' + words[v];
           };
           stars.forEach(s => s.addEventListener('click', () => {
             const v = Number(s.dataset.v);
-            self.rateSelections[id] = self.rateSelections[id] === v ? 0 : v;
+            if (self.rateSelections[id] === v) delete self.rateSelections[id];
+            else self.rateSelections[id] = v;
             paint();
             updateProgress();
           }));
         });
 
         function updateProgress() {
-          const n = Object.values(self.rateSelections).filter(Boolean).length;
+          const n = Object.keys(self.rateSelections).length;
           document.getElementById('rateCount').textContent = n;
           document.getElementById('rateProgressBar').style.width = (n / 10 * 100) + '%';
           document.getElementById('submitAllBtn').disabled = n < 10;
@@ -1233,7 +1235,7 @@
         if (!this.requireAuth()) return;
         const ids = [], scores = [];
         Object.keys(this.rateSelections).forEach(id => {
-          if (this.rateSelections[id]) { ids.push(Number(id)); scores.push(this.rateSelections[id]); }
+          if (Object.hasOwn(this.rateSelections, id)) { ids.push(Number(id)); scores.push(this.rateSelections[id]); }
         });
         if (ids.length < 10) { UI.toast('请为全部 10 部电影打分', 'warn'); return; }
         const btn = document.getElementById('submitAllBtn');
@@ -1635,7 +1637,7 @@
           const widget = this.buildStarsInput(sel, v => { sel = v; }, false);
           starsWrap.appendChild(widget);
           row.querySelector('.myrate-save').addEventListener('click', async () => {
-            if (!sel) { UI.toast('请先选择评分', 'warn'); return; }
+          if (sel === null) { UI.toast('请先选择评分', 'warn'); return; }
             try {
               await Api.submitRatings([id], [sel]);
               row.querySelector('.myrate-score').innerHTML = UI.fmtRating(sel) + '<i>分</i>';
@@ -1981,8 +1983,8 @@
           <button type="button" class="btn-primary sm" data-act="submit">提交评分</button>
         </div>`;
       document.body.appendChild(pop);
-      let sel = 0;
-      const widget = this.buildStarsInput(0, v => {
+      let sel = null;
+      const widget = this.buildStarsInput(null, v => {
         sel = v;
         pop.querySelector('.qr-word').textContent = v ? v + '分 · ' + this.scoreWord(v) : '';
       }, true);
@@ -1996,7 +1998,7 @@
         if (!act) return;
         if (act.dataset.act === 'cancel') { close(); return; }
         if (!this.requireAuth()) { close(); return; }
-        if (!sel) { UI.toast('请先点亮星星', 'warn'); return; }
+        if (sel === null) { UI.toast('请先选择评分', 'warn'); return; }
         try {
           await Api.submitRatings([Number(movieid)], [sel]);
           UI.toast('评分成功 🎉 已记入 personalratings', 'ok');

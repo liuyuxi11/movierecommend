@@ -90,14 +90,14 @@ const assert = (cond, msg) => {
 
   // 评分
   const ids = [318, 446, 109487];
-  let sr = await Api.submitRatings(ids, [10, 8, 9]);
+  let sr = await Api.submitRatings(ids, [5, 4, 3]);
   assert(sr.count === 3, '批量评分 3 部');
   const my = await Api.myRatings({ page: 1, page_size: 10 });
   assert(my.data.total === 3, '我的评分列表 3 条');
-  sr = await Api.submitRatings([318], [6]);
+  sr = await Api.submitRatings([318], [4]);
   const my2 = await Api.myRatings({ page: 1, page_size: 10 });
   const updated = my2.data.items.find(x => x.movieid === 318);
-  assert(updated.rating === 6, '重复评分覆盖为 6 分');
+  assert(updated.rating === 4, '重复评分覆盖为 4 分');
 
   // 收藏
   let fav = await Api.toggleFavorite(318, 'want_to_watch');

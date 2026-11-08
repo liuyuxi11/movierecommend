@@ -81,13 +81,13 @@ adminuser ——< adminoperationlog
 | `ratingid` | bigint | 否 | PK，自增评分记录 ID。 |
 | `userid` | int | 否 | FK → `user.userid`。 |
 | `movieid` | int | 否 | FK → `movieinfo.movieid`。 |
-| `rating` | int | 否 | 1–10 分。 |
+| `rating` | int | 否 | 1–5 分；站内评分范围。 |
 | `rated_at` | datetime(6) | 否 | 当前评分时间，按 UTC 存储。 |
 | `timestamp` | char(10) | 是 | 旧 Unix 时间戳字段，作为兼容/审计字段暂留；新逻辑使用 `rated_at`。 |
 
-约束：PK `ratingid`，UQ `uk_personalratings_user_movie(userid, movieid)`，FK `fk_personalratings_user`、`fk_personalratings_movie`，删除规则均为 RESTRICT，CK `chk_personalratings_rating` 限制 1–10，IDX `idx_personalratings_movie_rating(movieid, rating)`、`idx_personalratings_user_rated(userid, rated_at)`。
+约束：PK `ratingid`，UQ `uk_personalratings_user_movie(userid, movieid)`，FK `fk_personalratings_user`、`fk_personalratings_movie`，删除规则均为 RESTRICT，CK `chk_personalratings_rating` 限制 1–5，IDX `idx_personalratings_movie_rating(movieid, rating)`、`idx_personalratings_user_rated(userid, rated_at)`。从旧 0–5 约束升级时先检查没有 0 分记录，再执行 `backend/migrations/0002_personalratings_one_to_five.sql`；迁移不会删除评分。
 
-ALS 模型反馈可以从 `(userid, movieid, rating)` 读取。导出到 Spark 前需要确定是否过滤软删除用户/电影；当前表不包含独立的评分变更事件。
+ALS 模型反馈从 `(userid, movieid, rating, rated_at)` 读取，使用显式反馈；训练只使用 `personalratings`，按 `user.deleted_at`、`movieinfo.deleted_at` 排除软删除实体，不按 `user.status` 过滤，也不使用收藏行为。当前表不包含独立的评分变更事件，因此 `rated_at` 时间切分不能还原评分修改前的历史快照。
 
 ### `trainingdataset`：离线训练数据集元信息
 | 字段 | 类型 | 可空 | 说明 |
@@ -266,7 +266,7 @@ ALS 模型反馈可以从 `(userid, movieid, rating)` 读取。导出到 Spark �
 | 管理操作量 | `adminoperationlog` | 按管理员、操作类型、目标和 UTC 时间范围聚合。 |
 
 ## 数据处理接口注意事项
-- ALS 模型评分源以 `personalratings` 的当前有效评分为基准；如果合并外部数据，再读取 `trainingrating` 并在 Spark 侧构造不冲突的用户索引。应用用户表为空的时候，不能把外部评分伪造成站内用户评分。
+- 当前 ALS 评分源仅为 `personalratings` 的当前有效评分；本项目配置不合并 `trainingrating`，也不使用 `userfavorite` 作为隐式反馈。应用用户表为空时不能把外部评分伪造成站内用户评分。
 - 电影 ID 由导入数据提供。外部数据集的电影 ID 必须先映射到 `movieinfo.movieid`；不能确认映射时应在导入侧保留外部电影键并隔离未匹配行，当前 schema 尚无通用电影映射表。
 - `movieinfo.averating/numrating` 和 `personalratings` 聚合结果可能来自不同来源；下游报表和推荐特征必须标注使用哪一种口径。
 - 训练任务、数据快照版本、评估指标、模型文件位置、任务状态和模型发布/回滚不由当前业务表管理。其持久化位置与 Celery/Spark 任务约定需要另行确认；Redis 只作为任务消息代理、短期状态缓存。

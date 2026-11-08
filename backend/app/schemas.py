@@ -113,6 +113,6 @@ class RatingSubmit(BaseModel):
             raise ValueError("movieid 必须为正整数")
         if len(set(self.movieids)) != len(self.movieids):
             raise ValueError("同一批次不能重复提交同一部电影")
-        if any(rating < 1 or rating > 10 for rating in self.ratings):
-            raise ValueError("评分必须在 1 到 10 之间")
+        if any(rating < 1 or rating > 5 for rating in self.ratings):
+            raise ValueError("评分必须在 1 到 5 之间")
         return self

@@ -7,6 +7,7 @@
 - 后端：Python、FastAPI、Tortoise ORM、MySQL（`asyncmy`）和 JWT 认证。
 - 前端：`frontend/` 下的静态 HTML、CSS 和原生 JavaScript，无 Node.js、npm 或构建步骤。
 - 推荐接口：`POST /api/recommend/generate` 当前按接口约定返回 `503`，推荐任务服务尚未接入。
+- 离线 ALS：`backend/jobs/als_recommender.py` 使用 `personalratings` 训练显式反馈模型；运行与迁移说明见 [docs/als-recommendation.md](docs/als-recommendation.md)。
 - 数据分析：`backend/app/analytics.py` 提供评分、评论、收藏和推荐事件聚合查询。
 
 ## 目录结构

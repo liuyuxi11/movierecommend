@@ -134,12 +134,12 @@
   };
 
   /* ---------- 星级渲染 ---------- */
-  /* rating: 0-10 分制；返回 5 星 HTML（支持半星/四分之一填充） */
+  /* rating: 0-5 分制；返回 5 星 HTML（支持半星/四分之一填充） */
   UI.starsHtml = function (rating, opts) {
     opts = opts || {};
     const size = opts.size || 13;
-    const r = rating === null || rating === undefined ? 0 : Math.max(0, Math.min(10, Number(rating)));
-    const filled = r / 2; // 5 星制
+    const r = rating === null || rating === undefined ? 0 : Math.max(0, Math.min(5, Number(rating)));
+    const filled = r;
     let html = `<span class="stars" style="--star-size:${size}px" title="${UI.fmtRating(r)} 分">`;
     for (let i = 1; i <= 5; i++) {
       let pct = 0;
@@ -155,9 +155,9 @@
     return html;
   };
 
-  /* 5 星制（1-5）渲染 —— 用于影评 */
+  /* 5 星制（0-5）渲染。 */
   UI.stars5Html = function (n) {
-    return UI.starsHtml((Number(n) || 0) * 2);
+    return UI.starsHtml(Number(n) || 0);
   };
 
   /* ---------- Toast ---------- */

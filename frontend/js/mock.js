@@ -170,7 +170,7 @@
     myRatings.forEach(r => {
       const m = ALL_MOVIES.find(x => x.movieid === r.movieid);
       if (!m) return;
-      const boost = (r.rating - 6) / 10; // 高分电影的类型偏好权重
+      const boost = (r.rating - 3) / 5; // 1-5 分制下的类型偏好权重
       genreOf(m).forEach(g => { likedGenres[g] = (likedGenres[g] || 0) + Math.max(0, boost); });
     });
 
@@ -328,7 +328,7 @@
       movieids.forEach((id, i) => {
         if (!Number.isInteger(id) || id <= 0) throw { status: 422, detail: '电影 ID 必须为正整数' };
         const r = ratings[i];
-        if (!Number.isInteger(r) || r < 1 || r > 10) throw { status: 422, detail: '评分必须为 1–10 的整数' };
+        if (!Number.isInteger(r) || r < 1 || r > 5) throw { status: 422, detail: '评分必须为 1–5 的整数' };
         if (!ALL_MOVIES.find(x => x.movieid === id)) throw { status: 404, detail: { message: '电影不存在或已删除', movieids: [id] } };
       });
       const all = LS.get('ratings', []);

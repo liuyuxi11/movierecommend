@@ -1,3 +1,9 @@
+# Current Import Note
+
+The active importer is database/seed/generate_mock_data.py. It imports all data/raw/ratings.dat records, maps users to ml1m_###### accounts, clears and rebuilds linked behavior tables, and uses a 1-5 rating constraint. This document's historical generator examples and row-count plan predate the MovieLens import; use [the 2026-10-29 import record](ratings-import-run-20261029.md) for the historical import state.
+
+---
+
 # 第一部分：信息核验与待确认清单
 
 以用户更新后的 `database/dumps/movierecommend.sql` 为结构依据，`docs/database.md` 用于解释业务语义。脚本不会执行 dump 中的 DROP、CREATE、INSERT 或关闭外键语句，也不会修改表结构。
@@ -11,7 +17,7 @@
 | 表 | 字段摘要 | 主键、唯一键与外键 |
 |---|---|---|
 | user | userid int!；username varchar(50)!；password varchar(255)!；phone varchar(32)!；email varchar(254)!；avatar varchar(1000)?；status varchar(20)! 默认 active；created_at/updated_at! 默认 CURRENT_TIMESTAMP(6)，updated_at 自动更新；deleted_at?；active_username/active_phone/active_email 可空 STORED 生成列 | 自增 PK(userid)；三个 active_* 分别唯一；没有外键 |
-| personalratings | ratingid bigint!；userid/movieid/rating int!；timestamp char(10)? 默认 NULL；rated_at! 无默认 | 自增 PK(ratingid)；UQ(userid,movieid)；FK userid→user、movieid→movieinfo；CHECK rating BETWEEN 1 AND 10 |
+| personalratings | ratingid bigint!；userid/movieid/rating int!；timestamp char(10)? 默认 NULL；rated_at! 无默认 | 自增 PK(ratingid)；UQ(userid,movieid)；FK userid→user、movieid→movieinfo；CHECK rating BETWEEN 1 AND 5 |
 | moviecomment | commentid bigint!；userid/movieid int!；content varchar(500)!；moderation_status varchar(20)! 默认 published；created_at! 默认当前时间；deleted_at? | 自增 PK(commentid)；FK 用户、电影；没有业务唯一键；CHECK moderation_status IN (published,review_pending,hidden) |
 | commentlike | id bigint!；userid int!；commentid bigint!；is_active tinyint(1)! 默认 1；created_at/updated_at! 默认当前时间，updated_at 自动更新 | 自增 PK(id)；UQ(userid,commentid)；FK 用户、评论；SQL 没有 is_active CHECK，业务只生成 0/1 |
 | commentlike_event | eventid bigint!；userid int!；commentid bigint!；action varchar(10)!；created_at! 默认当前时间 | 自增 PK(eventid)；FK 用户、评论；CHECK action IN (like,unlike)；没有 FK 指向 commentlike，按(userid,commentid)对应 |
@@ -636,7 +642,7 @@ GROUP BY request_id,movieid HAVING COUNT(*)>1;
 -- NOT NULL 和合法值。
 SELECT COUNT(*) FROM `user` WHERE username IS NULL OR password IS NULL
  OR phone IS NULL OR email IS NULL OR status IS NULL;
-SELECT COUNT(*) FROM personalratings WHERE rating IS NULL OR rating NOT BETWEEN 1 AND 10;
+SELECT COUNT(*) FROM personalratings WHERE rating IS NULL OR rating NOT BETWEEN 1 AND 5;
 SELECT COUNT(*) FROM moviecomment WHERE moderation_status IS NULL
  OR moderation_status NOT IN ('published','review_pending','hidden');
 SELECT COUNT(*) FROM commentlike WHERE is_active IS NULL OR is_active NOT IN (0,1);
@@ -671,7 +677,7 @@ SELECT COUNT(*) FROM `personalratings` c LEFT JOIN `movieinfo` p ON c.`movieid`=
 
 SELECT COUNT(*) FROM `personalratings` c LEFT JOIN `user` p ON c.`userid`=p.`userid` WHERE c.`userid` IS NOT NULL AND p.`userid` IS NULL;
 
-SELECT COUNT(*) FROM `personalratings` WHERE NOT ((`rating` between 1 and 10));
+SELECT COUNT(*) FROM `personalratings` WHERE NOT ((`rating` between 1 and 5));
 
 SELECT COUNT(*) FROM `userfavorite` WHERE `id` IS NULL OR `userid` IS NULL OR `movieid` IS NULL OR `status` IS NULL OR `created_at` IS NULL OR `updated_at` IS NULL;
 

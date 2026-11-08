@@ -53,7 +53,7 @@ WHERE u.`userid` IS NULL OR m.`movieid` IS NULL;
 
 DELETE FROM `personalratings`
 WHERE `rating` IS NULL
-   OR `rating` NOT BETWEEN 1 AND 10
+   OR `rating` NOT BETWEEN 1 AND 5
    OR `timestamp` IS NULL
    OR `timestamp` NOT REGEXP '^[0-9]{9,10}$';
 
@@ -99,7 +99,7 @@ ALTER TABLE `personalratings`
   ADD KEY `idx_personalratings_movie_rating` (`movieid`, `rating`),
   ADD KEY `idx_personalratings_user_rated` (`userid`, `rated_at`),
   ADD CONSTRAINT `chk_personalratings_rating`
-    CHECK (`rating` BETWEEN 1 AND 10),
+    CHECK (`rating` BETWEEN 1 AND 5),
   ADD CONSTRAINT `fk_personalratings_user`
     FOREIGN KEY (`userid`) REFERENCES `user` (`userid`) ON DELETE RESTRICT,
   ADD CONSTRAINT `fk_personalratings_movie`

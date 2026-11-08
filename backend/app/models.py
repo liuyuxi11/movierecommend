@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from tortoise import fields, models
+from tortoise.migrations.constraints import CheckConstraint
 
 
 class User(models.Model):
@@ -114,6 +115,10 @@ class PersonalRating(models.Model):
         table = "personalratings"
         unique_together = (("user", "movie"),)
         indexes = (("movie", "rating"), ("user", "rated_at"))
+        constraints = (CheckConstraint(
+            check="rating >= 1 AND rating <= 5",
+            name="chk_personalratings_rating",
+        ),)
 
 
 class TrainingDataset(models.Model):

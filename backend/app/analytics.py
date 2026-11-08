@@ -17,7 +17,7 @@ from app.models import (
 
 
 async def get_rating_distribution() -> list[dict[str, Any]]:
-    """Return counts grouped by the current 1-10 rating value."""
+    """Return counts grouped by the current 1-5 rating value."""
     return await (
         PersonalRating.all()
         .group_by("rating")
