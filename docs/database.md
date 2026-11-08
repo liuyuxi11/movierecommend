@@ -1,6 +1,8 @@
 # 数据库结构说明
 本文档描述当前`movierecommend` MySQL 数据库。业务 schema 由`backend/migrations/0001_schema_upgrade.sql`创建，Tortoise ORM 定义位于 `backend/app/models.py`。当前数据库还有 Aerich 迁移元数据表 `aerich`。
 
+升级备注：`user`、`adminuser` 的 `token_version` 由 `backend/migrations/0003_auth_token_version.sql` 在字段缺失时添加；API 启动不会自动执行此迁移。执行及验证说明见 `docs/mock-data-run.md` 的“数据库结构升级提示”。
+
 ## 约定
 - 数据库为 MySQL 8.0.42，表使用 InnoDB。新建业务表使用 `utf8mb4_0900_ai_ci`；沿用旧 schema 的 `user`、`movieinfo`、`personalratings`、`recommendresult` 仍然为 `utf8mb3_general_ci`。`user.active_username` 生成列单独使用 `utf8mb4_0900_ai_ci`，因此索引唯一性大小写不敏感。旧表字符集后续如需统一，应单独评估字符转换和索引影响。
 - `DATETIME(6)` 本身不带时区。应用通过 Tortoise `use_tz=True`、`timezone="UTC"` 统一按 UTC 写入和读取；Unix 时间戳需要先转换为 UTC，再写入 `rated_at` 或者对应的 UTC 时间列。
@@ -37,6 +39,7 @@ adminuser ——< adminoperationlog
 | `email` | varchar(254) | 否 | 必填；活跃账号唯一。 |
 | `avatar` | varchar(1000) | 是 | 头像 URL 或者存储引用。 |
 | `status` | varchar(20) | 否 | 默认 `active`；账号状态值由应用约定。 |
+| `token_version` | int | 否 | 默认 `0`；登出、改密、重置密码及账号状态变更时递增，使旧 JWT 失效。 |
 | `created_at` / `updated_at` | datetime(6) | 否 | 创建和最后更新时间。 |
 | `deleted_at` | datetime(6) | 是 | 软删除时间；NULL 代表未删除。 |
 | `active_username` / `active_phone` / `active_email` | 生成列 | 是 | 仅未删除用户计算实际值；用于三个活跃账号唯一索引。 |
@@ -51,6 +54,7 @@ adminuser ——< adminoperationlog
 | `password` | varchar(255) | 否 | 管理员密码哈希。 |
 | `role` | varchar(30) | 否 | 管理角色。 |
 | `status` | varchar(20) | 否 | 默认 `active`。 |
+| `token_version` | int | 否 | 默认 `0`；登出、账号角色或状态变更时递增，使旧 JWT 失效。 |
 | `created_at` / `updated_at` | datetime(6) | 否 | 创建和更新时间。 |
 | `deleted_at` | datetime(6) | 是 | 管理员软删除时间。 |
 

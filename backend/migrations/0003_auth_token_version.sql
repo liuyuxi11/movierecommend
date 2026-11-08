@@ -1,0 +1,19 @@
+USE `movierecommend`;
+
+SET @sql := IF(
+  (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+   WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='user'
+   AND COLUMN_NAME='token_version') = 0,
+  'ALTER TABLE `user` ADD COLUMN `token_version` int NOT NULL DEFAULT 0',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(
+  (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+   WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='adminuser'
+   AND COLUMN_NAME='token_version') = 0,
+  'ALTER TABLE `adminuser` ADD COLUMN `token_version` int NOT NULL DEFAULT 0',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
