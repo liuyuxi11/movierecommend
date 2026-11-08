@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import argparse
+from pathlib import Path
 from urllib.parse import urlsplit
 
 try:
@@ -14,20 +15,12 @@ except ImportError:
     print("ERROR: pyspark is not installed")
     raise SystemExit(1)
 
-url = os.getenv("MYSQL_JDBC_URL", "")
-if not url.startswith("jdbc:mysql://"):
-    print("ERROR: MYSQL_JDBC_URL must use jdbc:mysql://")
-    raise SystemExit(1)
-if not re.search(r"(?:[?&])serverTimezone=UTC(?:&|$)", url, re.IGNORECASE):
-    print("ERROR: MYSQL_JDBC_URL must include serverTimezone=UTC")
-    raise SystemExit(1)
-for name in ("MYSQL_USER", "MYSQL_PASSWORD"):
-    if not os.getenv(name):
-        print(f"ERROR: {name} is not set")
-        raise SystemExit(1)
-
 java = shutil.which("java")
 spark_submit = shutil.which("spark-submit")
+if not spark_submit:
+    suffix = ".cmd" if os.name == "nt" else ""
+    candidate = Path(sys.executable).parent / f"spark-submit{suffix}"
+    spark_submit = str(candidate) if candidate.is_file() else None
 if java:
     version_result = subprocess.run([java, "-version"], capture_output=True, text=True, check=False)
     version_text = version_result.stderr + version_result.stdout
@@ -39,7 +32,6 @@ print(f"pyspark_version={pyspark.__version__}")
 print(f"java_executable_found={bool(java)}")
 print(f"java_major={java_major}")
 print(f"spark_submit_found={bool(spark_submit)}")
-print(f"jdbc_host_configured={bool(urlsplit(url[len('jdbc:'):]).hostname)}")
 if not java or not spark_submit or java_major not in (17, 21):
     print("ERROR: use a Spark-compatible Java 17 or 21 runtime")
     raise SystemExit(1)
@@ -48,6 +40,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--probe-mysql", action="store_true")
 args = parser.parse_args()
 if args.probe_mysql:
+    url = os.getenv("MYSQL_JDBC_URL", "")
+    if not url.startswith("jdbc:mysql://"):
+        print("ERROR: MYSQL_JDBC_URL must use jdbc:mysql://")
+        raise SystemExit(1)
+    if not re.search(r"(?:[?&])serverTimezone=UTC(?:&|$)", url, re.IGNORECASE):
+        print("ERROR: MYSQL_JDBC_URL must include serverTimezone=UTC")
+        raise SystemExit(1)
+    for name in ("MYSQL_USER", "MYSQL_PASSWORD"):
+        if not os.getenv(name):
+            print(f"ERROR: {name} is not set")
+            raise SystemExit(1)
+    print(f"jdbc_host_configured={bool(urlsplit(url[len('jdbc:'):]).hostname)}")
     from pyspark.sql import SparkSession
 
     spark = None

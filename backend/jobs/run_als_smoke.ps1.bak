@@ -1,0 +1,34 @@
+param(
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+)
+
+$ErrorActionPreference = 'Stop'
+$jdkHome = Join-Path $ProjectRoot '.tools\jdk-21'
+$python = Join-Path $ProjectRoot '.venv_new\Scripts\python.exe'
+$sparkSubmit = Join-Path $ProjectRoot '.venv_new\Scripts\spark-submit.cmd'
+
+if (-not (Test-Path (Join-Path $jdkHome 'bin\java.exe'))) {
+    throw "Project Java 21 runtime was not found at $jdkHome"
+}
+if (-not (Test-Path $python)) {
+    throw "Project Python environment was not found at $python"
+}
+if (-not (Test-Path $sparkSubmit)) {
+    throw "PySpark spark-submit was not found at $sparkSubmit"
+}
+
+$env:JAVA_HOME = $jdkHome
+$env:Path = "$jdkHome\bin;$env:Path"
+$env:SPARK_HOME = Join-Path $ProjectRoot '.venv_new\Lib\site-packages\pyspark'
+$env:PYSPARK_PYTHON = $python
+$env:PYSPARK_DRIVER_PYTHON = $python
+
+& $python (Join-Path $ProjectRoot 'backend\jobs\check_als_environment.py')
+if ($LASTEXITCODE -ne 0) {
+    throw 'Spark environment preflight failed.'
+}
+
+& $sparkSubmit --master 'local[2]' (Join-Path $ProjectRoot 'backend\jobs\test_als_smoke.py')
+if ($LASTEXITCODE -ne 0) {
+    throw 'Synthetic ALS smoke test failed.'
+}

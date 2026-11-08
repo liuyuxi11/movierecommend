@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-import tempfile
+import os
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -17,17 +17,22 @@ from als_recommender import (
     evaluate_ranking_methods,
     fill_and_publish_candidates,
     regression_metrics,
-    temporal_split,
+    per_user_random_split,
 )
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    worker_python = os.environ.get("PYSPARK_PYTHON", sys.executable)
     spark = (SparkSession.builder.master("local[2]").appName("als-synthetic-smoke")
-             .config("spark.sql.session.timeZone", "UTC").getOrCreate())
+             .config("spark.sql.session.timeZone", "UTC")
+             .config("spark.sql.shuffle.partitions", "4")
+             .config("spark.pyspark.python", worker_python)
+             .config("spark.driver.host", "127.0.0.1")
+             .config("spark.driver.bindAddress", "127.0.0.1").getOrCreate())
+    spark.sparkContext.setLogLevel("WARN")
     run_id = uuid.uuid4().hex
     logger = RunAdapter(logging.getLogger("als_smoke"), {"run_id": run_id})
-    checkpoint = (Path(tempfile.gettempdir()) / ("als-smoke-checkpoint-" + run_id)).resolve().as_uri()
-    spark.sparkContext.setCheckpointDir(checkpoint)
     try:
         base = datetime(2026, 1, 1, tzinfo=timezone.utc)
         rows = []
@@ -42,13 +47,15 @@ def main():
             rows, "ratingid long, userId int, movieId int, rating float, rated_at timestamp"
         ).cache()
         args = SimpleNamespace(
-            train_cutoff="2026-01-03T00:00:00Z", valid_cutoff="2026-01-04T00:00:00Z",
-            rank=2, max_iter=3, reg_param=0.1, seed=42, checkpoint_interval=2,
+            rank=2, max_iter=3, reg_param=0.1, seed=42, checkpoint_interval=-1,
             als_blocks=2, top_n=3, positive_threshold=4, candidate_multiplier=3,
             baseline_pool=8, fallback_pool=8, batch_id="smoketest2026",
-            model_version="als-smoke-hybrid-v1",
+            model_version="als-smoke-hybrid-v1", bayes_prior_strength=2.0,
+            max_ranking_pairs=1000, ranking_user_sample=100,
+            selected_hybrid_weight=0.5,
         )
-        train, valid, test, _, _, sizes = temporal_split(ratings, args)
+        train, valid, test, _, _, sizes = per_user_random_split(ratings, args)
+        print("split rows:", sizes, flush=True)
         assert all(size > 0 for size in sizes), sizes
         model = als_estimator(args, args.rank, args.max_iter, args.reg_param).fit(train.unionByName(valid))
         regression = regression_metrics(model, test, logger, "synthetic-test")
@@ -64,15 +71,16 @@ def main():
         else:
             raise AssertionError("cold-start-only regression evaluation should fail explicitly")
 
-        empty_split_args = SimpleNamespace(
-            train_cutoff="2030-01-01T00:00:00Z", valid_cutoff="2031-01-01T00:00:00Z"
+        singleton = spark.createDataFrame(
+            [(1, 1, 1, 5.0, base)],
+            "ratingid long, userId int, movieId int, rating float, rated_at timestamp",
         )
         try:
-            temporal_split(ratings, empty_split_args)
+            per_user_random_split(singleton, args)
         except ValueError as exc:
             assert "empty partition" in str(exc)
         else:
-            raise AssertionError("empty temporal partition should fail explicitly")
+            raise AssertionError("empty per-user split should fail explicitly")
 
         active_users = spark.createDataFrame([(1,), (2,), (3,), (4,), (99,)], "userId int")
         active_movies = spark.createDataFrame(
@@ -84,14 +92,18 @@ def main():
         ranking = evaluate_ranking_methods(
             model, train.unionByName(valid), test, active_users,
             active_movies.select("movieId"), category_map, args, logger, [],
+            methods=("als", "popularity", "bayesian", "random", "hybrid"),
         )
-        assert {"als", "popularity", "random"} == set(ranking)
+        print("ranking evaluation complete", flush=True)
+        assert {"als", "popularity", "bayesian", "random", "hybrid_pop_0.5", "evaluation_scope"} == set(ranking)
         output = fill_and_publish_candidates(
             model, ratings, active_users, active_movies, category_map, args, logger
         )
+        print("candidate generation complete", flush=True)
         assert output.filter((F.col("position") < 1) | (F.col("position") > args.top_n)).count() == 0
         assert output.groupBy("request_id", "movieid").count().filter(F.col("count") > 1).count() == 0
         assert output.filter(F.col("userid") == 99).count() > 0
+        assert output.groupBy("userid").count().filter(F.col("count") < args.top_n).count() == 0
         print("synthetic ALS smoke passed; ranking methods:", sorted(ranking))
         for frame in (ratings, train, valid, test):
             frame.unpersist()

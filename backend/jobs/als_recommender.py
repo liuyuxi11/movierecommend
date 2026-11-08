@@ -208,6 +208,38 @@ def temporal_split(ratings: DataFrame, args):
     return train, valid, test, train_cutoff, valid_cutoff, sizes
 
 
+def per_user_random_split(ratings: DataFrame, args):
+    counts = Window.partitionBy("userId")
+    order = Window.partitionBy("userId").orderBy(
+        F.xxhash64("userId", "movieId", F.lit(args.seed)), F.asc("movieId")
+    )
+    ranked = (ratings
+              .withColumn("_user_count", F.count("*").over(counts))
+              .withColumn("_user_order", F.row_number().over(order))
+              .withColumn("_test_count", F.when(F.col("_user_count") >= 3,
+                                                  F.greatest(F.lit(1), F.floor(F.col("_user_count") * F.lit(0.1))))
+                          .otherwise(F.lit(0)))
+              .withColumn("_valid_count", F.when(F.col("_user_count") >= 2,
+                                                   F.greatest(F.lit(1), F.floor(F.col("_user_count") * F.lit(0.1))))
+                           .otherwise(F.lit(0)))
+              .withColumn("_train_count", F.col("_user_count") - F.col("_test_count") - F.col("_valid_count")))
+    train = ranked.filter(F.col("_user_order") <= F.col("_train_count")).drop(
+        "_user_count", "_user_order", "_test_count", "_valid_count", "_train_count"
+    ).cache()
+    valid = ranked.filter(
+        (F.col("_user_order") > F.col("_train_count"))
+        & (F.col("_user_order") <= F.col("_train_count") + F.col("_valid_count"))
+    ).drop("_user_count", "_user_order", "_test_count", "_valid_count", "_train_count").cache()
+    test = ranked.filter(F.col("_user_order") > F.col("_train_count") + F.col("_valid_count"))\
+        .drop("_user_count", "_user_order", "_test_count", "_valid_count", "_train_count").cache()
+    sizes = (train.count(), valid.count(), test.count())
+    if any(size == 0 for size in sizes):
+        for frame in (train, valid, test):
+            frame.unpersist()
+        raise ValueError(f"Per-user split produced an empty partition: train/valid/test={sizes}")
+    return train, valid, test, None, None, sizes
+
+
 def als_estimator(args, rank: int, iterations: int, reg_param: float) -> ALS:
     return ALS(
         userCol="userId", itemCol="movieId", ratingCol="rating",
@@ -250,7 +282,7 @@ def topk_metrics(recommendations: DataFrame, relevant: DataFrame, catalog: DataF
     relevant_users = relevant.select("userId").distinct()
     ranked = (recommendations.filter(F.col("position") <= k)
               .join(relevant_users, "userId", "inner")
-              .select("userId", "movieId", "position"))
+              .select("userId", "movieId", "position").cache())
     hits = ranked.join(relevant, ["userId", "movieId"], "inner").groupBy("userId").agg(
         F.countDistinct("movieId").alias("hits"),
         F.sum(1.0 / F.log2(F.col("position") + 1)).alias("dcg"),
@@ -280,6 +312,15 @@ def topk_metrics(recommendations: DataFrame, relevant: DataFrame, catalog: DataF
     coverage_items = recommended_items.count()
     recommended_users = ranked.select("userId").distinct().count()
     user_count = users.select("userId").distinct().count()
+    list_sizes = (relevant_users.join(
+        ranked.groupBy("userId").agg(F.countDistinct("movieId").alias("list_size")),
+        "userId", "left",
+    ).fillna({"list_size": 0}))
+    list_summary = list_sizes.agg(
+        F.avg("list_size").alias("mean_list_size"),
+        F.sum((F.col("list_size") < k).cast("long")).alias("short_list_users"),
+        F.sum((F.col("list_size") == 0).cast("long")).alias("empty_list_users"),
+    ).first().asDict()
 
     # Category coverage is the fraction of recommended items' category tags
     # represented in each list. This is a bounded category variety proxy, not
@@ -302,89 +343,156 @@ def topk_metrics(recommendations: DataFrame, relevant: DataFrame, catalog: DataF
         "item_coverage": coverage_items / catalog_count if catalog_count else 0.0,
         "warm_test_user_list_coverage": recommended_users / evaluated if evaluated else 0.0,
         "active_user_list_coverage": recommended_users / user_count if user_count else 0.0,
+        "mean_list_size": float(list_summary["mean_list_size"] or 0.0),
+        "short_list_users": int(list_summary["short_list_users"] or 0),
+        "empty_list_users": int(list_summary["empty_list_users"] or 0),
         "mean_category_coverage_ratio": float(diversity),
-        "candidate_policy": "shared active catalog with model item factors; exclude train-seen; cold-start test users excluded",
+        "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
     }
     logger.info("ranking_metrics %s", json.dumps({"dataset": label, "k": k, **result}, sort_keys=True))
+    ranked.unpersist(blocking=False)
     return result
 
 
-def make_ranked_candidates(users: DataFrame, candidate_rows: DataFrame,
-                           seen: DataFrame, catalog: DataFrame, k: int) -> DataFrame:
-    w = Window.partitionBy("userId").orderBy(F.desc("score"), F.asc("movieId"))
-    return (
-        candidate_rows.join(seen, ["userId", "movieId"], "left_anti")
-        .join(catalog.select("movieId").distinct(), "movieId", "inner")
-        .withColumn("position", F.row_number().over(w))
-        .filter(F.col("position") <= k)
-        .select("userId", "movieId", "position")
-    )
-
-
-def evaluate_ranking_methods(model, train: DataFrame, test: DataFrame, all_active_users: DataFrame,
-                             catalog: DataFrame, category_map: DataFrame, args, logger,
-                             cache_registry: list[DataFrame]) -> dict:
-    seen = train.select("userId", "movieId").distinct()
-    factor_movies = model.itemFactors.select(F.col("id").alias("movieId"))
-    candidate_catalog = catalog.join(factor_movies, "movieId", "inner").distinct()
-    eval_users = test.select("userId").distinct()
-    known_users = model.userFactors.select(F.col("id").alias("userId"))
-    warm_eval_users = eval_users.join(known_users, "userId", "inner")
-    if warm_eval_users.limit(1).count() == 0:
-        raise ValueError("No warm test users available for Top-K evaluation")
-    # Cold-start users are excluded from ALS ranking metrics and measured
-    # separately through the recommendation user-coverage metric.
-    relevant = (test.filter(F.col("rating") >= args.positive_threshold)
-                .join(warm_eval_users, "userId", "inner")
-                .select("userId", "movieId").distinct().cache())
-    cache_registry.append(relevant)
-    if relevant.limit(1).count() == 0:
-        relevant.unpersist()
-        raise ValueError("No relevant warm-user test interactions; lower --positive-threshold or inspect split")
-
-    als_raw = (
-        model.recommendForUserSubset(warm_eval_users, args.top_n * args.candidate_multiplier)
-        .select("userId", F.explode("recommendations").alias("rec"))
-        .select("userId", F.col("rec.movieId").alias("movieId"), F.col("rec.rating").alias("score"))
-    )
-    als_raw = als_raw.filter(
-        F.col("score").isNotNull() & ~F.isnan("score")
-        & (F.abs(F.col("score")) <= 9999.999999)
-    )
-    als_ranked = make_ranked_candidates(warm_eval_users, als_raw, seen, candidate_catalog, args.top_n)
-
-    # Popularity scores are calculated only from training rows.
-    popularity = train.groupBy("movieId").agg(
-        F.count("*").alias("n"), F.avg("rating").alias("avg_rating")
-    ).withColumn("score", F.col("n") * F.col("avg_rating"))
-    pop_candidates = (
-        warm_eval_users.crossJoin(F.broadcast(popularity.orderBy(F.desc("score"), F.asc("movieId"))
-                                              .limit(args.baseline_pool)))
-        .select("userId", "movieId", "score")
-    )
-    popular_ranked = make_ranked_candidates(warm_eval_users, pop_candidates, seen, candidate_catalog, args.top_n)
-
-    # Deterministic pseudo-random baseline uses a seeded hash of user/movie IDs.
-    random_pool = candidate_catalog.select("movieId").withColumn(
-        "sample_key", F.xxhash64("movieId", F.lit(args.seed))
-    ).orderBy("sample_key").limit(args.baseline_pool).drop("sample_key")
-    random_candidates = warm_eval_users.crossJoin(F.broadcast(random_pool)).select(
-        "userId", "movieId",
-        (F.xxhash64("userId", "movieId", F.lit(args.seed)) % F.lit(2147483647)).alias("score")
-    )
-    random_ranked = make_ranked_candidates(warm_eval_users, random_candidates, seen, candidate_catalog, args.top_n)
-
-    results = {}
-    for name, ranked, target_users in (
-        ("als", als_ranked, all_active_users),
-        ("popularity", popular_ranked, all_active_users),
-        ("random", random_ranked, all_active_users),
-    ):
-        results[name] = topk_metrics(
-            ranked, relevant, candidate_catalog, category_map, target_users,
-            args.top_n, logger, f"test_{name}",
+def score_full_candidate_catalog(model, train: DataFrame, heldout: DataFrame,
+                                 catalog: DataFrame, args, *, sample_users: int | None = None):
+    candidate_catalog = (catalog.select("movieId").distinct()
+                         .join(model.itemFactors.select(F.col("id").alias("movieId")), "movieId", "inner")
+                         .distinct().cache())
+    factor_users = model.userFactors.select(F.col("id").alias("userId"))
+    relevant_users = (heldout.filter(F.col("rating") >= args.positive_threshold)
+                      .select("userId").distinct().join(factor_users, "userId", "inner"))
+    if sample_users:
+        relevant_users = (relevant_users
+                          .withColumn("_sample_key", F.xxhash64("userId", F.lit(args.seed)))
+                          .orderBy("_sample_key").limit(sample_users).drop("_sample_key"))
+    relevant_users = relevant_users.cache()
+    users_count = relevant_users.count()
+    item_count = candidate_catalog.count()
+    if users_count == 0 or item_count == 0:
+        candidate_catalog.unpersist()
+        relevant_users.unpersist()
+        raise ValueError("Ranking evaluation has no warm relevant users or factorized catalog items")
+    pair_count = users_count * item_count
+    if pair_count > args.max_ranking_pairs:
+        candidate_catalog.unpersist()
+        relevant_users.unpersist()
+        raise ValueError(
+            f"Exact ranking candidate set is too large ({pair_count} user-item pairs; "
+            f"limit={args.max_ranking_pairs}); reduce --ranking-user-sample or raise --max-ranking-pairs"
         )
-    relevant.unpersist()
+
+    relevant = (heldout.filter(F.col("rating") >= args.positive_threshold)
+                .join(relevant_users, "userId", "inner")
+                .select("userId", "movieId").distinct().cache())
+    if relevant.limit(1).count() == 0:
+        for frame in (candidate_catalog, relevant_users, relevant):
+            frame.unpersist()
+        raise ValueError("No relevant warm-user interactions at positive threshold")
+
+    seen = train.select("userId", "movieId").distinct()
+    pairs = (relevant_users.crossJoin(candidate_catalog)
+             .join(seen, ["userId", "movieId"], "left_anti"))
+    predictions = model.transform(pairs).select("userId", "movieId", F.col("prediction").alias("als_score"))
+    item_stats = train.groupBy("movieId").agg(
+        F.count("*").alias("rating_count"), F.avg("rating").alias("mean_rating")
+    )
+    global_mean = train.agg(F.avg("rating").alias("global_mean")).first()["global_mean"]
+    popularity = (candidate_catalog.join(item_stats, "movieId", "left")
+                  .fillna({"rating_count": 0, "mean_rating": float(global_mean)})
+                  .withColumn("popularity_score", F.col("rating_count") * F.col("mean_rating"))
+                  .withColumn("bayes_score",
+                              (F.col("rating_count") * F.col("mean_rating")
+                               + F.lit(args.bayes_prior_strength) * F.lit(float(global_mean)))
+                              / (F.col("rating_count") + F.lit(args.bayes_prior_strength)))
+                  .select("movieId", "popularity_score", "bayes_score"))
+    scored = (predictions.join(popularity, "movieId", "left")
+              .filter(F.col("als_score").isNotNull() & ~F.isnan("als_score"))
+              .cache())
+    return candidate_catalog, relevant_users, relevant, scored, pair_count
+
+
+def rank_scored_candidates(scored: DataFrame, score_column: str, k: int) -> DataFrame:
+    window = Window.partitionBy("userId").orderBy(F.desc(score_column), F.asc("movieId"))
+    return (scored.withColumn("position", F.row_number().over(window))
+            .filter(F.col("position") <= k)
+            .select("userId", "movieId", "position"))
+
+
+def evaluate_ranking_methods(model, train: DataFrame, heldout: DataFrame, all_active_users: DataFrame,
+                             catalog: DataFrame, category_map: DataFrame, args, logger,
+                             cache_registry: list[DataFrame], *, methods=None,
+                             sample_users: int | None = None, hybrid_weights=None,
+                             label_prefix="test") -> dict:
+    candidate_catalog, eval_users, relevant, scored, pair_count = score_full_candidate_catalog(
+        model, train, heldout, catalog, args, sample_users=sample_users
+    )
+    cached_scored = scored
+    if hybrid_weights is not None:
+        weights = hybrid_weights
+    elif "hybrid" in (methods or ()):
+        weights = [args.selected_hybrid_weight]
+    else:
+        weights = []
+    scored = (scored
+              .withColumn("als_percentile", F.percent_rank().over(
+                  Window.partitionBy("userId").orderBy(F.asc("als_score"))))
+              .withColumn("popularity_percentile", F.percent_rank().over(
+                  Window.partitionBy("userId").orderBy(F.asc("popularity_score"))))
+              .withColumn("bayes_percentile", F.percent_rank().over(
+                  Window.partitionBy("userId").orderBy(F.asc("bayes_score")))))
+    score_columns = {
+        "als": "als_score",
+        "popularity": "popularity_score",
+        "bayesian": "bayes_score",
+    }
+    results = {}
+    for method in methods or ("als", "popularity", "bayesian", "random"):
+        if method in score_columns:
+            ranked = rank_scored_candidates(scored, score_columns[method], args.top_n)
+            results[method] = topk_metrics(
+                ranked, relevant, candidate_catalog, category_map, all_active_users,
+                args.top_n, logger, f"{label_prefix}_{method}",
+            )
+        elif method == "random":
+            random_scored = scored.withColumn(
+                "random_score", F.xxhash64("userId", "movieId", F.lit(args.seed))
+            )
+            ranked = rank_scored_candidates(random_scored, "random_score", args.top_n)
+            results[method] = topk_metrics(
+                ranked, relevant, candidate_catalog, category_map, all_active_users,
+                args.top_n, logger, f"{label_prefix}_random",
+            )
+        elif method == "hybrid":
+            for weight in weights:
+                hybrid = scored.withColumn(
+                    "hybrid_score",
+                    F.lit(1.0 - weight) * F.col("als_percentile")
+                    + F.lit(weight) * F.col("popularity_percentile"),
+                )
+                ranked = rank_scored_candidates(hybrid, "hybrid_score", args.top_n)
+                results[f"hybrid_pop_{weight:g}"] = topk_metrics(
+                    ranked, relevant, candidate_catalog, category_map, all_active_users,
+                    args.top_n, logger, f"{label_prefix}_hybrid_pop_{weight:g}",
+                )
+        else:
+            raise ValueError(f"Unknown ranking method: {method}")
+
+    positive_items = relevant.select("movieId").distinct()
+    factor_positive_count = positive_items.join(candidate_catalog, "movieId", "inner").count()
+    positive_count = positive_items.count()
+    results["evaluation_scope"] = {
+        "evaluated_users": eval_users.count(),
+        "candidate_items": candidate_catalog.count(),
+        "candidate_pairs_before_seen_filter": pair_count,
+        "model_scored_user_item_pairs": scored.count(),
+        "positive_items_with_factors": factor_positive_count,
+        "positive_item_factor_coverage": factor_positive_count / positive_count if positive_count else 0.0,
+        "positive_threshold": args.positive_threshold,
+        "candidate_policy": "exact full factorized active catalog per warm user; remove train-seen items before ranking",
+    }
+    for frame in (cached_scored, candidate_catalog, eval_users, relevant):
+        frame.unpersist(blocking=False)
     return results
 
 
@@ -411,27 +519,30 @@ def fill_and_publish_candidates(model, ratings: DataFrame, active_users: DataFra
         .orderBy(F.desc("score"), F.asc("movieId")).limit(args.fallback_pool)\
         .select("movieId", F.col("score").cast("double").alias("score"), F.lit("popular").alias("source"))
     als_candidates = (als_rows.join(seen, ["userId", "movieId"], "left_anti")
-                      .join(catalog, "movieId", "inner"))
-    w = Window.partitionBy("userId").orderBy(F.desc("score"), F.asc("movieId"))
-    als_ranked = als_candidates.withColumn("position", F.row_number().over(w))\
-        .filter(F.col("position") <= args.top_n)
-    als_counts = als_ranked.groupBy("userId").agg(F.max("position").alias("als_count"))
-    short_users = (active_users.join(als_counts, "userId", "left")
-                   .fillna({"als_count": 0})
-                   .filter(F.col("als_count") < args.top_n))
-    fallback_candidates = (
-        short_users.crossJoin(F.broadcast(hot_pool))
-        .join(seen, ["userId", "movieId"], "left_anti")
-        .join(als_ranked.select("userId", "movieId"), ["userId", "movieId"], "left_anti")
-    )
-    fallback_window = Window.partitionBy("userId").orderBy(F.desc("score"), F.asc("movieId"))
-    fallback_ranked = (fallback_candidates
-                       .withColumn("fallback_position", F.row_number().over(fallback_window))
-                       .withColumn("position", F.col("als_count") + F.col("fallback_position"))
-                       .filter(F.col("position") <= args.top_n)
-                       .select("userId", "movieId", "score", "source", "position"))
-    ranked = (als_ranked.select("userId", "movieId", "score", "source", "position")
-              .unionByName(fallback_ranked))
+                      .join(catalog, "movieId", "inner")
+                      .select("userId", "movieId", F.col("score").alias("als_score")))
+    # The verified validation blend is used for warm users. The bounded hot
+    # pool supplies cold users and fills gaps after seen/deleted items are removed.
+    hot_candidates = (active_users.crossJoin(F.broadcast(hot_pool))
+                      .join(seen, ["userId", "movieId"], "left_anti")
+                      .join(catalog, "movieId", "inner")
+                      .select("userId", "movieId", F.col("score").alias("pop_score")))
+    candidates = als_candidates.join(hot_candidates, ["userId", "movieId"], "full_outer")
+    candidate_window = Window.partitionBy("userId")
+    candidates = (candidates
+                  .withColumn("als_pct", F.percent_rank().over(
+                      candidate_window.orderBy(F.asc_nulls_first("als_score"))))
+                  .withColumn("pop_pct", F.percent_rank().over(
+                      candidate_window.orderBy(F.asc_nulls_first("pop_score"))))
+                  .withColumn("score", F.when(F.col("als_score").isNull(), F.col("pop_pct"))
+                              .otherwise((F.lit(1.0 - args.selected_hybrid_weight) * F.col("als_pct"))
+                                         + (F.lit(args.selected_hybrid_weight) * F.coalesce(F.col("pop_pct"), F.lit(0.0)))))
+                  .withColumn("source", F.when(F.col("als_score").isNull(), F.lit("popular_fallback"))
+                              .otherwise(F.lit("als_hybrid"))))
+    rank_window = Window.partitionBy("userId").orderBy(F.desc("score"), F.asc("movieId"))
+    ranked = (candidates.withColumn("position", F.row_number().over(rank_window))
+              .filter(F.col("position") <= args.top_n)
+              .select("userId", "movieId", "score", "source", "position"))
     counts = (active_users.join(ranked.groupBy("userId").count(), "userId", "left")
               .fillna({"count": 0}).cache())
     summary = counts.agg(
@@ -466,6 +577,9 @@ def fill_and_publish_candidates(model, ratings: DataFrame, active_users: DataFra
             F.current_timestamp().alias("generated_at"),
         )
     )
+    duplicate_output = result.groupBy("request_id", "movieid").count().filter(F.col("count") > 1).limit(1).count()
+    if duplicate_output:
+        raise ValueError("Generated recommendations contain duplicate (request_id,movieid) keys")
     too_long = result.filter(F.length("request_id") > 64).limit(1).count()
     if too_long:
         raise ValueError("Generated request_id exceeds recommendationitem.request_id varchar(64)")
@@ -482,7 +596,9 @@ def parse_grid(text: str, cast):
     return values
 
 
-def tune_parameters(train: DataFrame, valid: DataFrame, args, logger) -> tuple[int, int, float, list[dict]]:
+def tune_parameters(train: DataFrame, valid: DataFrame, all_active_users: DataFrame,
+                    catalog: DataFrame, category_map: DataFrame, args, logger,
+                    cache_registry: list[DataFrame]) -> tuple[int, int, float, list[dict]]:
     ranks = parse_grid(args.rank_grid, int) if args.tune else [args.rank]
     iterations = parse_grid(args.iter_grid, int) if args.tune else [args.max_iter]
     regs = parse_grid(args.reg_grid, float) if args.tune else [args.reg_param]
@@ -495,14 +611,43 @@ def tune_parameters(train: DataFrame, valid: DataFrame, args, logger) -> tuple[i
                 started = time.monotonic()
                 model = als_estimator(args, rank, iters, reg).fit(train)
                 metrics = regression_metrics(model, valid, logger, f"validation_r{rank}_i{iters}_reg{reg}")
+                ranking = evaluate_ranking_methods(
+                    model, train, valid, all_active_users, catalog, category_map,
+                    args, logger, cache_registry, methods=("als",),
+                    sample_users=args.ranking_user_sample,
+                    label_prefix=f"validation_r{rank}_i{iters}_reg{reg}",
+                )
                 row = {"rank": rank, "max_iter": iters, "reg_param": reg,
                        "validation_rmse": metrics["rmse"], "validation_mae": metrics["mae"],
                        "validation_coverage": metrics["prediction_coverage"],
+                       "validation_ndcg_at_k": ranking["als"]["ndcg_at_k"],
+                       "validation_precision_at_k": ranking["als"]["precision_at_k"],
                        "fit_eval_seconds": time.monotonic() - started}
                 grid_results.append(row)
                 logger.info("tuning_candidate %s", json.dumps(row, sort_keys=True))
-    best = min(grid_results, key=lambda row: row["validation_rmse"])
+    best = max(grid_results, key=lambda row: (
+        row["validation_ndcg_at_k"], -row["validation_rmse"], -row["rank"],
+    ))
     return best["rank"], best["max_iter"], best["reg_param"], grid_results
+
+
+def select_hybrid_weight(model, train: DataFrame, valid: DataFrame,
+                         all_active_users: DataFrame, catalog: DataFrame,
+                         category_map: DataFrame, args, logger,
+                         cache_registry: list[DataFrame]) -> tuple[float, dict]:
+    weights = parse_grid(args.hybrid_popularity_weights, float)
+    if any(weight < 0 or weight > 1 for weight in weights):
+        raise ValueError("hybrid popularity weights must be in [0, 1]")
+    metrics = evaluate_ranking_methods(
+        model, train, valid, all_active_users, catalog, category_map,
+        args, logger, cache_registry, methods=("als", "hybrid"),
+        sample_users=args.ranking_user_sample, hybrid_weights=weights,
+        label_prefix="validation_blend",
+    )
+    selected = max(weights, key=lambda weight: (
+        metrics[f"hybrid_pop_{weight:g}"]["ndcg_at_k"], -weight,
+    ))
+    return selected, metrics
 
 
 def write_json(path: str, payload: dict) -> None:
@@ -526,6 +671,10 @@ def build_parser():
     parser.add_argument("--candidate-multiplier", type=int, default=5)
     parser.add_argument("--baseline-pool", type=int, default=500)
     parser.add_argument("--fallback-pool", type=int, default=500)
+    parser.add_argument("--bayes-prior-strength", type=float, default=10.0)
+    parser.add_argument("--hybrid-popularity-weights", default="0,0.1,0.25,0.5,0.75,1")
+    parser.add_argument("--ranking-user-sample", type=int, default=1000)
+    parser.add_argument("--max-ranking-pairs", type=int, default=25000000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--als-blocks", type=int, default=10)
     parser.add_argument("--checkpoint-interval", type=int, default=10)
@@ -535,11 +684,15 @@ def build_parser():
     parser.add_argument("--shuffle-partitions", type=int, default=int(os.getenv("SPARK_SHUFFLE_PARTITIONS", "200")))
     parser.add_argument("--train-cutoff", default=os.getenv("ALS_TRAIN_CUTOFF"))
     parser.add_argument("--valid-cutoff", default=os.getenv("ALS_VALID_CUTOFF"))
+    parser.add_argument("--split-mode", choices=("per_user_random", "rated_at"),
+                        default=os.getenv("ALS_SPLIT_MODE", "per_user_random"))
     parser.add_argument("--model-version", default="als-explicit-v1")
     parser.add_argument("--batch-id", default=None)
     parser.add_argument("--model-path", default=None)
     parser.add_argument("--snapshot-path", default=os.getenv("ALS_SNAPSHOT_PATH"))
     parser.add_argument("--input-snapshot", default=os.getenv("ALS_INPUT_SNAPSHOT"))
+    parser.add_argument("--no-snapshot", action="store_true",
+                        help="run an ephemeral MySQL-backed evaluation without persisting a data snapshot")
     parser.add_argument("--recommendations-path", default=None)
     parser.add_argument("--metadata-path", default=None)
     parser.add_argument("--log-level", default=os.getenv("ALS_LOG_LEVEL", "INFO"))
@@ -556,13 +709,21 @@ def run(args) -> dict:
         raise ValueError("--batch-id must be a unique 1-32 character alphanumeric token")
     if not args.model_version or len(args.model_version) > 100:
         raise ValueError("--model-version must be 1-100 characters")
-    if bool(args.snapshot_path) == bool(args.input_snapshot):
-        raise ValueError("provide exactly one of --snapshot-path (capture) or --input-snapshot (replay)")
+    snapshot_modes = int(bool(args.snapshot_path)) + int(bool(args.input_snapshot)) + int(args.no_snapshot)
+    if snapshot_modes != 1:
+        raise ValueError("provide exactly one of --snapshot-path, --input-snapshot, or --no-snapshot")
     if min(args.rank, args.max_iter, args.top_n, args.positive_threshold,
            args.candidate_multiplier, args.baseline_pool, args.fallback_pool,
+           args.ranking_user_sample, args.max_ranking_pairs,
            args.jdbc_partitions, args.jdbc_fetch_size, args.shuffle_partitions,
-           args.als_blocks, args.checkpoint_interval) <= 0:
+           args.als_blocks) <= 0:
         raise ValueError("all count, partition, rank, and iteration parameters must be positive")
+    if args.bayes_prior_strength <= 0:
+        raise ValueError("bayes prior strength must be positive")
+    if not 1 <= args.positive_threshold <= 5:
+        raise ValueError("positive threshold must be within the 1-5 rating range")
+    if args.checkpoint_interval == 0 or args.checkpoint_interval < -1:
+        raise ValueError("checkpoint interval must be positive or -1 to disable checkpointing")
     if not args.input_snapshot:
         validate_jdbc_url(os.environ["MYSQL_JDBC_URL"])
 
@@ -577,9 +738,10 @@ def run(args) -> dict:
                  .config("spark.sql.shuffle.partitions", str(args.shuffle_partitions))
                  .getOrCreate())
         checkpoint_dir = args.checkpoint_dir
-        if not checkpoint_dir:
-            checkpoint_dir = (Path(tempfile.gettempdir()) / "movie-als-checkpoints" / run_id).resolve().as_uri()
-        spark.sparkContext.setCheckpointDir(checkpoint_dir)
+        if args.checkpoint_interval > 0:
+            if not checkpoint_dir:
+                checkpoint_dir = (Path(tempfile.gettempdir()) / "movie-als-checkpoints" / run_id).resolve().as_uri()
+            spark.sparkContext.setCheckpointDir(checkpoint_dir)
         stage_started = time.monotonic()
         raw, ratings, active_users, active_movies, category_map, quality = extract_database_snapshot(spark, args)
         cached.extend([raw, ratings])
@@ -595,28 +757,49 @@ def run(args) -> dict:
                     "parquet_snapshot" if args.input_snapshot else "current MySQL multi-query extraction")
 
         stage_started = time.monotonic()
-        train, valid, test, train_cutoff, valid_cutoff, split_sizes = temporal_split(ratings, args)
+        if args.split_mode == "per_user_random":
+            train, valid, test, train_cutoff, valid_cutoff, split_sizes = per_user_random_split(ratings, args)
+        else:
+            train, valid, test, train_cutoff, valid_cutoff, split_sizes = temporal_split(ratings, args)
         cached.extend([train, valid, test])
         logger.info("temporal_split %s", json.dumps({
+            "mode": args.split_mode,
             "train_rows": split_sizes[0], "valid_rows": split_sizes[1], "test_rows": split_sizes[2],
-            "train_cutoff_utc": train_cutoff.isoformat(), "valid_cutoff_utc": valid_cutoff.isoformat(),
+            "train_cutoff_utc": train_cutoff.isoformat() if train_cutoff else None,
+            "valid_cutoff_utc": valid_cutoff.isoformat() if valid_cutoff else None,
+            "semantics": ("deterministic per-user holdout of current ratings; not a future-event backtest"
+                          if args.split_mode == "per_user_random" else
+                          "rated_at is current-rating update time; not immutable rating history"),
         }, sort_keys=True))
         logger.info("stage_complete name=temporal_split seconds=%.3f", time.monotonic() - stage_started)
 
         stage_started = time.monotonic()
-        best_rank, best_iter, best_reg, tuning = tune_parameters(train, valid, args, logger)
-        logger.info("stage_complete name=tune seconds=%.3f", time.monotonic() - stage_started)
-        stage_started = time.monotonic()
-        evaluation_model = als_estimator(args, best_rank, best_iter, best_reg).fit(train.unionByName(valid))
-        test_regression = regression_metrics(evaluation_model, test, logger, "time_holdout_test")
-        logger.info("stage_complete name=test_evaluation seconds=%.3f", time.monotonic() - stage_started)
-
         if not args.input_snapshot:
             cached.extend([active_users, active_movies, category_map])
+        best_rank, best_iter, best_reg, tuning = tune_parameters(
+            train, valid, active_users, active_movies.select("movieId"), category_map,
+            args, logger, cached,
+        )
+        logger.info("stage_complete name=tune seconds=%.3f", time.monotonic() - stage_started)
+        stage_started = time.monotonic()
+        validation_model = als_estimator(args, best_rank, best_iter, best_reg).fit(train)
+        args.selected_hybrid_weight, validation_blend = select_hybrid_weight(
+            validation_model, train, valid, active_users, active_movies.select("movieId"),
+            category_map, args, logger, cached,
+        )
+        logger.info("selected_hybrid_weight value=%s", args.selected_hybrid_weight)
+        logger.info("stage_complete name=validation_blend seconds=%.3f", time.monotonic() - stage_started)
+        stage_started = time.monotonic()
+        evaluation_model = als_estimator(args, best_rank, best_iter, best_reg).fit(train.unionByName(valid))
+        test_regression = regression_metrics(evaluation_model, test, logger, "test_holdout")
+        logger.info("stage_complete name=test_evaluation seconds=%.3f", time.monotonic() - stage_started)
+
         stage_started = time.monotonic()
         ranking = evaluate_ranking_methods(
             evaluation_model, train.unionByName(valid), test, active_users,
             active_movies.select("movieId"), category_map, args, logger, cached,
+            methods=("als", "popularity", "bayesian", "random", "hybrid"),
+            label_prefix="test",
         )
         logger.info("stage_complete name=ranking_evaluation seconds=%.3f", time.monotonic() - stage_started)
 
@@ -643,11 +826,12 @@ def run(args) -> dict:
             "run_id": run_id, "batch_id": args.batch_id,
             "started_at_utc": started_at_utc.isoformat(),
             "completed_at_utc": datetime.now(timezone.utc).isoformat(),
-            "snapshot_id": run_id,
-            "input": {"source": ("parquet_snapshot" if args.input_snapshot else
+            "snapshot_id": None if args.no_snapshot else run_id,
+            "input": {"source": ("mysql_ephemeral_no_snapshot" if args.no_snapshot else
+                                   "parquet_snapshot" if args.input_snapshot else
                                    "MySQL personalratings joined to user/movieinfo"),
-                      "snapshot_path": args.input_snapshot or args.snapshot_path,
-                      "snapshot_paths": {
+                      "snapshot_path": None if args.no_snapshot else (args.input_snapshot or args.snapshot_path),
+                      "snapshot_paths": None if args.no_snapshot else {
                           "ratings": (args.input_snapshot or args.snapshot_path).rstrip("/\\") + "/ratings",
                           "active_users": (args.input_snapshot or args.snapshot_path).rstrip("/\\") + "/active_users",
                           "active_movies": (args.input_snapshot or args.snapshot_path).rstrip("/\\") + "/active_movies",
@@ -658,15 +842,25 @@ def run(args) -> dict:
                       "cross_table_snapshot_atomic": False,
                       "snapshot_replay": bool(args.input_snapshot),
                       "rating_history_semantics": "current row; rated_at is last update, not immutable history"},
-            "temporal_split": {"train_rows": split_sizes[0], "valid_rows": split_sizes[1],
-                               "test_rows": split_sizes[2], "train_cutoff_utc": train_cutoff.isoformat(),
-                               "valid_cutoff_utc": valid_cutoff.isoformat()},
+            "data_split": {"mode": args.split_mode, "train_rows": split_sizes[0], "valid_rows": split_sizes[1],
+                            "test_rows": split_sizes[2],
+                            "train_cutoff_utc": train_cutoff.isoformat() if train_cutoff else None,
+                            "valid_cutoff_utc": valid_cutoff.isoformat() if valid_cutoff else None,
+                            "semantics": ("deterministic per-user holdout of current ratings; not a future-event backtest"
+                                          if args.split_mode == "per_user_random" else
+                                          "rated_at is current-rating update time; not immutable rating history")},
             "spark_version": SPARK_VERSION,
             "parameters": {"rank_grid": args.rank_grid if args.tune else [args.rank],
                            "iter_grid": args.iter_grid if args.tune else [args.max_iter],
                            "reg_grid": args.reg_grid if args.tune else [args.reg_param],
                            "selected_rank": best_rank, "selected_max_iter": best_iter,
                            "selected_reg_param": best_reg, "implicit_prefs": False,
+                            "selected_hybrid_popularity_weight": args.selected_hybrid_weight,
+                            "hybrid_popularity_weights": args.hybrid_popularity_weights,
+                            "bayes_prior_strength": args.bayes_prior_strength,
+                            "ranking_user_sample": args.ranking_user_sample,
+                            "max_ranking_pairs": args.max_ranking_pairs,
+                            "split_mode": args.split_mode,
                            "positive_threshold": args.positive_threshold, "top_n": args.top_n,
                            "candidate_multiplier": args.candidate_multiplier,
                            "model_version": args.model_version,
@@ -679,7 +873,8 @@ def run(args) -> dict:
                            "baseline_pool": args.baseline_pool,
                            "fallback_pool": args.fallback_pool,
                            "shuffle_partitions": args.shuffle_partitions},
-            "tuning_results": tuning, "test_regression": test_regression,
+            "tuning_results": tuning, "validation_blend": validation_blend,
+            "test_regression": test_regression,
             "test_ranking": ranking, "recommendations_rows": output_count,
             "recommendations_path": args.recommendations_path,
             "model_path": args.model_path,
