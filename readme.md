@@ -32,7 +32,7 @@
 │   │   ├── models.py            # Tortoise ORM 模型
 │   │   ├── schemas.py           # Pydantic 请求模型和校验
 │   │   ├── auth.py              # JWT 和密码哈希
-│   │   ├── analytics.py         # 尚未挂载为 HTTP 路由的聚合查询
+│   │   ├── analytics.py         # 分析指标查询
 │   │   ├── email_service.py     # SMTP 邮件发送
 │   │   ├── avatar_storage.py    # 头像文件保存
 │   │   └── api/                 # 认证、电影、评分、收藏、评论、推荐、管理路由
@@ -104,13 +104,13 @@ python -m pip install -r requirements.txt
 
 ## 启动后端
 
-从项目根目录启动，`--app-dir backend` 用于让 Python 找到 `backend/app` 包：
+`backend/app/main.py` 是 FastAPI 应用模块，使用 Uvicorn 启动；不要直接用 `python backend/app/main.py`。启动前确认项目根目录 `.env` 已配置 `DATABASE_URL` 和 `SECRET_KEY`，并启动对应的 MySQL 服务。从项目根目录执行：
 
 ```powershell
 .\.venv_new\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-如果已经激活虚拟环境，也可以执行：
+如果已激活 `.venv_new`，也可以执行：
 
 ```powershell
 python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
@@ -122,7 +122,27 @@ python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 - Swagger 文档：http://127.0.0.1:8000/docs
 - OpenAPI JSON：http://127.0.0.1:8000/openapi.json
 
-启动阶段会连接 `DATABASE_URL` 指定的 MySQL。若出现数据库连接错误，请先确认 MySQL 服务、数据库名称、用户名和密码。
+推荐生成接口还需要 Redis 和 Celery Worker。项目内的 Redis 配置会将 RDB 写入被 Git 忽略的 `data/processed/redis`，并仅监听本机回环地址。从项目根目录在一个终端启动本机 Redis：
+
+```powershell
+& 'C:\Program Files\Redis\redis-server.exe' .\backend\redis.windows.conf
+```
+
+再在新的 PowerShell 终端从项目根目录启动 Worker：
+
+```powershell
+Set-Location backend
+..\.venv_new\Scripts\celery.exe -A app.celery_app:celery_app worker --loglevel=INFO --pool=solo
+```
+
+若使用 Celery Beat 定期提交离线 ALS 训练任务，再开一个终端执行：
+
+```powershell
+Set-Location backend
+..\.venv_new\Scripts\celery.exe -A app.celery_app:celery_app beat --loglevel=INFO
+```
+
+Beat 的周期由 `ALS_TRAIN_INTERVAL_SECONDS` 配置，默认每 7 天；Spark/Java/JDBC 还需按 `backend/jobs/check_als_environment.py` 单独检查。API 本身不会启动 Spark。Redis、Celery broker/result backend 和 ALS 共享路径通过 `.env` 中的环境变量配置；连接失败时分别检查 Redis 服务、`REDIS_URL`、Worker 状态及共享目录权限。
 
 ## 启动前端
 

@@ -118,58 +118,85 @@ async def toggle_comment_like(commentid: int, user: User = Depends(auth.get_curr
 
 @router.post("/{commentid}/reports", status_code=201)
 async def report_comment(commentid: int, data: ReportCreate, user: User = Depends(auth.get_current_user)):
-    comment = await _comment_or_404(commentid)
     try:
-        report = await CommentReport.create(
-            comment_id=comment.commentid,
-            reporter_id=user.userid,
-            reason_code=data.reason_code,
-            reason_detail=data.reason_detail,
-        )
+        async with in_transaction() as connection:
+            comment = await MovieComment.filter(
+                commentid=commentid, deleted_at=None,
+            ).using_db(connection).select_for_update().first()
+            if comment is None:
+                raise HTTPException(status_code=404, detail="评论不存在或已删除")
+            report = await CommentReport.create(
+                comment_id=comment.commentid,
+                reporter_id=user.userid,
+                reason_code=data.reason_code,
+                reason_detail=data.reason_detail,
+                using_db=connection,
+            )
+            if comment.moderation_status == "published":
+                comment.moderation_status = "review_pending"
+                await comment.save(using_db=connection, update_fields=["moderation_status"])
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="同一用户不能重复举报同一评论") from exc
-    if comment.moderation_status == "published":
-        comment.moderation_status = "review_pending"
-        await comment.save(update_fields=["moderation_status"])
     return {"code": 201, "data": {"reportid": report.reportid, "status": report.status}}
 
 
 @router.get("/admin/reports")
-async def list_reports(report_status: Optional[Literal["pending", "accepted", "rejected"]] = Query(None, alias="status"), admin: AdminUser = Depends(auth.get_current_admin)):
+async def list_reports(
+    report_status: Optional[Literal["pending", "accepted", "rejected"]] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    admin: AdminUser = Depends(auth.get_current_admin),
+):
     reports = CommentReport.all().order_by("created_at")
     if report_status:
         reports = reports.filter(status=report_status)
-    rows = await reports.values(
+    total = await reports.count()
+    rows = await reports.order_by("-created_at", "-reportid").offset((page - 1) * page_size).limit(page_size).values(
         "reportid", "comment_id", "reporter_id", "reason_code", "reason_detail",
         "status", "created_at", "handled_at",
     )
-    return {"code": 200, "data": rows}
+    return {"code": 200, "data": {"items": rows, "total": total, "page": page, "page_size": page_size}}
 
 
 @router.put("/admin/reports/{reportid}")
 async def decide_report(reportid: int, data: ReportDecision, admin: AdminUser = Depends(auth.get_current_admin)):
-    report = await CommentReport.get_or_none(reportid=reportid)
-    if report is None:
-        raise HTTPException(status_code=404, detail="举报不存在")
-    if report.status != "pending":
-        raise HTTPException(status_code=409, detail="该举报已经处理")
     now = datetime.now(timezone.utc)
-    report.status, report.handled_at, report.handled_by_admin_id = data.status, now, admin.adminid
-    await report.save(update_fields=["status", "handled_at", "handled_by_admin_id"])
-    comment = await _comment_or_404(report.comment_id, include_deleted=True)
-    comment.moderation_status = "hidden" if data.status == "accepted" else "published"
-    await comment.save(update_fields=["moderation_status"])
-    await AdminOperationLog.create(admin=admin, action="comment.report_decide", target_type="comment", target_id=str(comment.commentid), detail={"reportid": reportid, "status": data.status})
+    async with in_transaction() as connection:
+        report = await CommentReport.filter(reportid=reportid).using_db(connection).select_for_update().first()
+        if report is None:
+            raise HTTPException(status_code=404, detail="举报不存在")
+        if report.status != "pending":
+            raise HTTPException(status_code=409, detail="该举报已经处理")
+        comment = await MovieComment.filter(commentid=report.comment_id).using_db(connection).select_for_update().first()
+        if comment is None:
+            raise HTTPException(status_code=404, detail="举报关联的评论不存在")
+        report.status, report.handled_at, report.handled_by_admin_id = data.status, now, admin.adminid
+        await report.save(using_db=connection, update_fields=["status", "handled_at", "handled_by_admin_id"])
+        comment.moderation_status = "hidden" if data.status == "accepted" else "published"
+        await comment.save(using_db=connection, update_fields=["moderation_status"])
+        await AdminOperationLog.create(
+            admin=admin,
+            action="comment.report_decide",
+            target_type="comment",
+            target_id=str(comment.commentid),
+            detail={"reportid": reportid, "status": data.status},
+            using_db=connection,
+        )
     return {"code": 200, "msg": "举报处理完成", "data": {"status": report.status, "comment_status": comment.moderation_status}}
 
 
 @router.delete("/admin/{commentid}")
 async def admin_delete_comment(commentid: int, admin: AdminUser = Depends(auth.get_current_admin)):
-    comment = await _comment_or_404(commentid)
-    comment.deleted_at = datetime.now(timezone.utc)
-    await comment.save(update_fields=["deleted_at"])
-    await AdminOperationLog.create(
-        admin=admin, action="comment.delete", target_type="comment",
-        target_id=str(commentid), detail=None,
-    )
+    async with in_transaction() as connection:
+        comment = await MovieComment.filter(
+            commentid=commentid, deleted_at=None,
+        ).using_db(connection).select_for_update().first()
+        if comment is None:
+            raise HTTPException(status_code=404, detail="评论不存在或已删除")
+        comment.deleted_at = datetime.now(timezone.utc)
+        await comment.save(using_db=connection, update_fields=["deleted_at"])
+        await AdminOperationLog.create(
+            admin=admin, action="comment.delete", target_type="comment",
+            target_id=str(commentid), detail=None, using_db=connection,
+        )
     return {"code": 200, "msg": "评论已软删除"}

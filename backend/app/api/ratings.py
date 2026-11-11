@@ -1,14 +1,19 @@
+import logging
 from datetime import datetime, timezone
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from tortoise.functions import Avg, Count
 from tortoise.exceptions import IntegrityError
 from tortoise.transactions import in_transaction
 from app.auth import get_current_user
+from app.celery_app import celery_app
 from app.models import MovieInfo, PersonalRating, User
+from app.redis_cache import cache_delete
 from app.schemas import RatingSubmit
 
 
 router = APIRouter()
+LOG = logging.getLogger(__name__)
 
 # Domain name used by the API layer.  The existing database/model is still
 # `personalratings`, so this alias does not require a schema change.
@@ -171,4 +176,22 @@ async def submit_ratings(
             detail="评分提交发生并发冲突，请重试",
         ) from exc
 
-    return {"code": 200, "msg": "评分提交成功", "count": len(data.movieids)}
+    await cache_delete(f"recommendation:{current_user.userid}:latest")
+    refresh_queued = True
+    refresh_request_id = uuid4().hex
+    try:
+        celery_app.send_task(
+            "recommendation.refresh_user",
+            args=[current_user.userid, refresh_request_id],
+        )
+    except Exception:
+        refresh_queued = False
+        LOG.exception("rating_committed recommendation_refresh_enqueue_failed user_id=%s", current_user.userid)
+
+    return {
+        "code": 200,
+        "msg": "评分提交成功",
+        "count": len(data.movieids),
+        "recommendation_refresh_queued": refresh_queued,
+        "recommendation_request_id": refresh_request_id if refresh_queued else None,
+    }

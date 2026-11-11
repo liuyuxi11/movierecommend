@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 try:
     from celery import Celery
@@ -27,4 +28,23 @@ else:
         accept_content=["json"],
         timezone="UTC",
         enable_utc=True,
+        broker_connection_timeout=3,
+        broker_connection_max_retries=1,
+        broker_connection_retry_on_startup=True,
+        broker_transport_options={"socket_connect_timeout": 2, "socket_timeout": 2},
+        task_publish_retry=True,
+        task_publish_retry_policy={
+            "max_retries": 1,
+            "interval_start": 0,
+            "interval_step": 0.2,
+            "interval_max": 0.5,
+        },
+        beat_schedule={
+            "publish-als-candidates": {
+                "task": "recommendation.train_als",
+                "schedule": timedelta(
+                    seconds=max(60, int(os.getenv("ALS_TRAIN_INTERVAL_SECONDS", "604800")))
+                ),
+            },
+        },
     )

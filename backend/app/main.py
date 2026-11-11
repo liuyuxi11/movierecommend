@@ -1,18 +1,27 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.database import init_db, close_db
+from tortoise.contrib.fastapi import RegisterTortoise
+from app.database import TORTOISE_ORM
 from app.avatar_storage import AVATAR_DIR
 from app.api import users, movies, ratings, recommend, comments
 from app.api import favorites
 from app.api import admin
+from app.api import analytics
 
-app = FastAPI(title="电影推荐系统API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with RegisterTortoise(app, config=TORTOISE_ORM):
+        yield
+
+
+app = FastAPI(title="电影推荐系统API", lifespan=lifespan)
 logger = logging.getLogger(__name__)
 
 
@@ -69,16 +78,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
-    print("数据库连接成功！")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_db()
-    print("数据库连接已关闭。")
-
 # 核心接口
 app.include_router(users.router, prefix="/api/auth", tags=["认证"])
 app.include_router(movies.router, prefix="/api/movies", tags=["电影"])
@@ -87,6 +86,7 @@ app.include_router(recommend.router, prefix="/api/recommend", tags=["推荐"])
 app.include_router(favorites.router, prefix="/api/favorites", tags=["收藏"])
 app.include_router(comments.router, prefix="/api/comments", tags=["评论"])
 app.include_router(admin.router, prefix="/api/admin", tags=["管理员注入"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["数据分析"])
 
 @app.get("/")
 async def root():

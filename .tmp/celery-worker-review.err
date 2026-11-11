@@ -1,0 +1,112 @@
+[2026-11-10 23:21:59,368: INFO/MainProcess] Connected to redis://127.0.0.1:6379/0
+[2026-11-10 23:21:59,413: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-10 23:22:00,476: INFO/MainProcess] mingle: all alone
+[2026-11-10 23:22:00,524: INFO/MainProcess] celery@LAPTOP-F55396L5 ready.
+[2026-11-10 23:26:28,766: INFO/MainProcess] Task recommendation.generate[a45c71ee96704e0a83c2dd8da72f8437] received
+[2026-11-10 23:26:28,876: INFO/MainProcess] recommendation_published request_id=a45c71ee96704e0a83c2dd8da72f8437 user_id=26382 items=20 algorithm=als-personalized-rerank-v1-o0.75-p0.1-g0.15-f0.1 cache_written=True hot_pool_available=True
+[2026-11-10 23:26:28,879: INFO/MainProcess] Tortoise-ORM shutdown
+[2026-11-10 23:26:28,905: INFO/MainProcess] Task recommendation.generate[a45c71ee96704e0a83c2dd8da72f8437] succeeded in 0.14100000000325963s: {'request_id': 'a45c71ee96704e0a83c2dd8da72f8437', 'count': 20, 'reused': False, 'cache_written': True, 'hot_pool_available': True}
+[2026-11-10 23:44:17,312: WARNING/MainProcess] consumer: Connection to broker lost. Trying to re-establish the connection...
+Traceback (most recent call last):
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 650, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\retry.py", line 105, in call_with_retry
+    return do()
+           ^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 915, in <lambda>
+    lambda: command(*args, **kwargs),
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 936, in try_read
+    return conn.read_response(disconnect_on_error=False, push_request=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 658, in read_response
+    raise ConnectionError(f"Error while reading from {host_error} : {e.args}")
+redis.exceptions.ConnectionError: Error while reading from 127.0.0.1:6379 : (10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 389, in connect_check_health
+    sock = self.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\retry.py", line 110, in call_with_retry
+    raise error
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\retry.py", line 105, in call_with_retry
+    return do()
+           ^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 390, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 803, in _connect
+    raise err
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 787, in _connect
+    sock.connect(socket_address)
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\celery\worker\consumer\consumer.py", line 346, in start
+    blueprint.start(self)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\celery\bootsteps.py", line 116, in start
+    step.start(parent)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\celery\worker\consumer\consumer.py", line 788, in start
+    c.loop(*c.loop_args())
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\celery\worker\loops.py", line 168, in synloop
+    _loop_cycle()
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\celery\worker\loops.py", line 157, in _loop_cycle
+    connection.drain_events(timeout=2.0)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\connection.py", line 343, in drain_events
+    return self.transport.drain_events(self.connection, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\virtual\base.py", line 997, in drain_events
+    get(self._deliver, timeout=timeout)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\redis.py", line 601, in get
+    ret = self.handle_event(fileno, event)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\redis.py", line 583, in handle_event
+    return self.on_readable(fileno), self
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\redis.py", line 579, in on_readable
+    chan.handlers[type]()
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\redis.py", line 931, in _receive
+    ret.append(self._receive_one(c))
+               ^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\kombu\transport\redis.py", line 941, in _receive_one
+    response = c.parse_response()
+               ^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 938, in parse_response
+    response = self._execute(conn, try_read)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 914, in _execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\retry.py", line 108, in call_with_retry
+    fail(error)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 916, in <lambda>
+    lambda _: self._reconnect(conn),
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\client.py", line 904, in _reconnect
+    conn.connect()
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 380, in connect
+    self.connect_check_health(check_health=True)
+  File "D:\program\movie_recommend\.venv_new\Lib\site-packages\redis\connection.py", line 395, in connect_check_health
+    raise TimeoutError("Timeout connecting to server")
+redis.exceptions.TimeoutError: Timeout connecting to server

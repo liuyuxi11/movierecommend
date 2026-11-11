@@ -1,0 +1,11 @@
+INFO:     127.0.0.1:58958 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65051 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63233 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61364 - "GET /api/recommend/task/a45c71ee96704e0a83c2dd8da72f8437 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61377 - "GET /api/analytics/overview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61388 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60486 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60487 - "GET /api/analytics/overview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60488 - "GET /api/recommend/task/test HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61851 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61885 - "GET /openapi.json HTTP/1.1" 200 OK

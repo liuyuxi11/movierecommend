@@ -1,0 +1,20 @@
+ 
+ -------------- celery@LAPTOP-F55396L5 v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-11-10.0.26100-SP0 2026-11-10 22:51:44
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         movierecommend:0x2255502eed0
+- ** ---------- .> transport:   redis://127.0.0.1:6379/0
+- ** ---------- .> results:     redis://127.0.0.1:6379/1
+- *** --- * --- .> concurrency: 20 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . recommendation.generate
+  . recommendation.refresh_user
+

@@ -1,0 +1,10 @@
+INFO:     127.0.0.1:51901 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51901 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53643 - "GET /api/analytics/overview HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53644 - "GET /api/recommend/task/not-a-task HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56427 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56428 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61850 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61884 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61890 - "GET /api/analytics/overview HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61892 - "GET /api/recommend/similar/1?limit=0 HTTP/1.1" 422 Unprocessable Entity

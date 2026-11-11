@@ -42,12 +42,32 @@ def validate_jdbc_url(url: str) -> None:
     parsed = url.lower()
     if not parsed.startswith("jdbc:mysql://"):
         raise ValueError("MYSQL_JDBC_URL must use jdbc:mysql://")
-    if not re.search(r"(?:[?&])servertimezone=utc(?:&|$)", parsed):
+    timezones = re.findall(r"(?:[?&])servertimezone=([^&]*)", url, flags=re.IGNORECASE)
+    if timezones != ["UTC"]:
         raise ValueError("MYSQL_JDBC_URL must explicitly include serverTimezone=UTC")
 
 
+def enforce_utc_jdbc_url(url: str) -> str:
+    base, separator, query = url.partition("?")
+    if not separator:
+        return base + "?serverTimezone=UTC"
+    parameters = [part for part in query.split("&")
+                  if not re.match(r"(?i)^serverTimezone=", part)]
+    parameters.append("serverTimezone=UTC")
+    return base + "?" + "&".join(parameters)
+
+
+def find_mysql_connector_jar() -> Path | None:
+    configured = os.getenv("MYSQL_CONNECTOR_JAR")
+    candidates = ([Path(configured)] if configured else []) + [
+        Path.home() / ".m2" / "repository" / "com" / "mysql" /
+        "mysql-connector-j" / "8.0.33" / "mysql-connector-j-8.0.33.jar",
+    ]
+    return next((candidate.resolve() for candidate in candidates if candidate.is_file()), None)
+
+
 def jdbc_read(spark: SparkSession, query: str, args, *, partition_column=None, bounds=None) -> DataFrame:
-    url = os.environ["MYSQL_JDBC_URL"]
+    url = enforce_utc_jdbc_url(os.environ["MYSQL_JDBC_URL"])
     validate_jdbc_url(url)
     reader = (
         spark.read.format("jdbc")
@@ -115,6 +135,10 @@ def extract_database_snapshot(spark: SparkSession, args) -> tuple[DataFrame, Dat
         F.sum((F.col("user_deleted_at").isNotNull()).cast("long")).alias("deleted_user_rows"),
         F.sum((F.col("movie_deleted_at").isNotNull()).cast("long")).alias("deleted_movie_rows"),
         F.sum((~F.col("rating").between(1, 5)).cast("long")).alias("invalid_rating"),
+        F.min("rating").alias("observed_rating_min"),
+        F.max("rating").alias("observed_rating_max"),
+        F.date_format(F.min("rated_at"), "yyyy-MM-dd HH:mm:ss.SSSSSS").alias("rated_at_min_utc"),
+        F.date_format(F.max("rated_at"), "yyyy-MM-dd HH:mm:ss.SSSSSS").alias("rated_at_max_utc"),
     ).first().asDict()
 
     duplicate_count = (
@@ -122,6 +146,7 @@ def extract_database_snapshot(spark: SparkSession, args) -> tuple[DataFrame, Dat
         .filter(F.col("count") > 1).count()
     )
     quality["duplicate_user_movie_keys"] = duplicate_count
+    quality["input_rows"] = raw_count
     trainable = (
         ratings
         .filter(
@@ -154,6 +179,26 @@ def extract_database_snapshot(spark: SparkSession, args) -> tuple[DataFrame, Dat
         F.col("movieid").cast("int").alias("movieId"),
         F.col("averating").cast("decimal(4,1)").alias("movie_rating_snapshot"),
     )
+    quality["active_user_count"] = active_users.select("userId").distinct().count()
+    quality["active_movie_count"] = active_movies.select("movieId").distinct().count()
+    quality["trainable_user_count"] = trainable.select("userId").distinct().count()
+    quality["trainable_movie_count"] = trainable.select("movieId").distinct().count()
+    freshness_sql = """
+      SELECT
+        DATE_FORMAT((SELECT MAX(rated_at) FROM personalratings), '%Y-%m-%d %H:%i:%s.%f') AS latest_rating_at,
+        DATE_FORMAT((SELECT MAX(updated_at) FROM `user` WHERE deleted_at IS NULL), '%Y-%m-%d %H:%i:%s.%f') AS latest_active_user_update_at,
+        DATE_FORMAT((SELECT MAX(updated_at) FROM movieinfo WHERE deleted_at IS NULL), '%Y-%m-%d %H:%i:%s.%f') AS latest_active_movie_update_at,
+        DATE_FORMAT((SELECT MAX(generated_at) FROM recommendationitem), '%Y-%m-%d %H:%i:%s.%f') AS latest_recommendation_generated_at
+    """
+    freshness_row = jdbc_read(spark, freshness_sql, args).first().asDict()
+    now_utc = datetime.now(timezone.utc)
+    quality["freshness"] = {}
+    for key, value in freshness_row.items():
+        latest = datetime.fromisoformat(value).replace(tzinfo=timezone.utc) if value else None
+        quality["freshness"][key] = {
+            "latest_utc": latest.isoformat() if latest else None,
+            "age_seconds": (now_utc - latest).total_seconds() if latest else None,
+        }
     if args.snapshot_path:
         quality["source"] = "mysql_personalratings_joined_entities"
         quality["input_rows"] = raw_count
@@ -657,6 +702,51 @@ def write_json(path: str, payload: dict) -> None:
         json.dump(payload, stream, indent=2, sort_keys=True, default=str)
 
 
+def export_user_recommendations_jsonl(frame: DataFrame, root: str, batch_id: str) -> str:
+    """Publish immutable per-user JSONL files without Hadoop's local filesystem."""
+    publish_root = Path(root).resolve()
+    batch_root = publish_root / "batches" / batch_id
+    users_root = batch_root / "users"
+    users_root.mkdir(parents=True, exist_ok=False)
+    columns = (
+        "userid", "movieid", "position", "prediction_score",
+        "movie_rating_snapshot", "algorithm_version", "generated_at",
+    )
+    required = set(columns)
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"Recommendation output missing JSONL columns: {sorted(missing)}")
+
+    current_user = None
+    current_rows = []
+
+    def flush_user(user_id, rows):
+        if user_id is None:
+            return
+        path = users_root / f"{user_id}.jsonl"
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            for item in rows:
+                stream.write(json.dumps(item, sort_keys=True, default=str) + "\n")
+
+    for row in frame.select(*columns).orderBy("userid", "position").toLocalIterator():
+        item = row.asDict(recursive=True)
+        user_id = int(item["userid"])
+        if current_user is not None and user_id != current_user:
+            flush_user(current_user, current_rows)
+            current_rows = []
+        current_user = user_id
+        current_rows.append(item)
+    flush_user(current_user, current_rows)
+
+    pointer = {"batch_id": batch_id, "users_dir": str(users_root), "format": "jsonl-v1"}
+    publish_root.mkdir(parents=True, exist_ok=True)
+    pointer_tmp = publish_root / f"latest.{batch_id}.tmp"
+    with pointer_tmp.open("x", encoding="utf-8") as stream:
+        json.dump(pointer, stream, sort_keys=True)
+    os.replace(pointer_tmp, publish_root / "latest.json")
+    return str(batch_root)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rank", type=int, default=64)
@@ -694,6 +784,10 @@ def build_parser():
     parser.add_argument("--no-snapshot", action="store_true",
                         help="run an ephemeral MySQL-backed evaluation without persisting a data snapshot")
     parser.add_argument("--recommendations-path", default=None)
+    parser.add_argument("--jsonl-recommendations-root", default=os.getenv("ALS_RECOMMENDATION_ROOT"),
+                        help="publish immutable per-user JSONL files and atomically update latest.json")
+    parser.add_argument("--validate-recommendations", action="store_true",
+                        help="generate and validate Top-N recommendations without writing Parquet")
     parser.add_argument("--metadata-path", default=None)
     parser.add_argument("--log-level", default=os.getenv("ALS_LOG_LEVEL", "INFO"))
     # No MySQL write exists in this job. Publishing belongs to the separate loader.
@@ -725,18 +819,32 @@ def run(args) -> dict:
     if args.checkpoint_interval == 0 or args.checkpoint_interval < -1:
         raise ValueError("checkpoint interval must be positive or -1 to disable checkpointing")
     if not args.input_snapshot:
+        os.environ["MYSQL_JDBC_URL"] = enforce_utc_jdbc_url(os.environ["MYSQL_JDBC_URL"])
         validate_jdbc_url(os.environ["MYSQL_JDBC_URL"])
 
     started = time.monotonic()
     started_at_utc = datetime.now(timezone.utc)
     spark = None
     cached = []
+    jsonl_recommendations_path = None
     try:
         logger.info("job_start batch_id=%s spark_runtime=%s", args.batch_id, SPARK_VERSION)
-        spark = (SparkSession.builder.appName("movie-als-recommender")
-                 .config("spark.sql.session.timeZone", "UTC")
-                 .config("spark.sql.shuffle.partitions", str(args.shuffle_partitions))
-                 .getOrCreate())
+        builder = (SparkSession.builder.appName("movie-als-recommender")
+                   .config("spark.sql.session.timeZone", "UTC")
+                   .config("spark.sql.shuffle.partitions", str(args.shuffle_partitions)))
+        spark_master = os.getenv("SPARK_MASTER")
+        if spark_master:
+            builder = builder.master(spark_master)
+        if not args.input_snapshot:
+            connector_jar = find_mysql_connector_jar()
+            if connector_jar is None:
+                raise FileNotFoundError(
+                    "MySQL Connector/J jar not found; set MYSQL_CONNECTOR_JAR to its local path"
+                )
+            # A local classpath avoids Spark's Windows jar-distribution chmod path.
+            builder = (builder.config("spark.driver.extraClassPath", str(connector_jar))
+                       .config("spark.executor.extraClassPath", str(connector_jar)))
+        spark = builder.getOrCreate()
         checkpoint_dir = args.checkpoint_dir
         if args.checkpoint_interval > 0:
             if not checkpoint_dir:
@@ -799,6 +907,7 @@ def run(args) -> dict:
             evaluation_model, train.unionByName(valid), test, active_users,
             active_movies.select("movieId"), category_map, args, logger, cached,
             methods=("als", "popularity", "bayesian", "random", "hybrid"),
+            sample_users=args.ranking_user_sample,
             label_prefix="test",
         )
         logger.info("stage_complete name=ranking_evaluation seconds=%.3f", time.monotonic() - stage_started)
@@ -809,18 +918,65 @@ def run(args) -> dict:
         logger.info("stage_complete name=production_fit seconds=%.3f", time.monotonic() - stage_started)
         if args.model_path:
             production_model.write().save(args.model_path)
-        if args.recommendations_path:
+        if args.recommendations_path or args.jsonl_recommendations_root or args.validate_recommendations:
             output = fill_and_publish_candidates(
                 production_model, ratings, active_users, active_movies, category_map, args, logger
             ).cache()
             cached.append(output)
             output_count = output.count()
+            invalid_position_count = output.filter(
+                (F.col("position") < 1) | (F.col("position") > args.top_n)
+            ).count()
+            duplicate_key_count = (output.groupBy("request_id", "movieid").count()
+                                   .filter(F.col("count") > 1).count())
+            duplicate_position_count = (output.groupBy("request_id", "position").count()
+                                        .filter(F.col("count") > 1).count())
+            missing_user_count = (output.select(F.col("userid").alias("userId")).distinct()
+                                  .join(active_users.select("userId").distinct(), "userId", "left_anti").count())
+            missing_movie_count = (output.select(F.col("movieid").alias("movieId")).distinct()
+                                   .join(active_movies.select("movieId").distinct(), "movieId", "left_anti").count())
+            seen_recommendation_count = (output.select(F.col("userid").alias("userId"),
+                                                       F.col("movieid").alias("movieId"))
+                                         .join(ratings.select("userId", "movieId").distinct(),
+                                               ["userId", "movieId"], "inner").count())
+            output_validation = {
+                "rows": output_count,
+                "invalid_position_rows": invalid_position_count,
+                "duplicate_request_movie_keys": duplicate_key_count,
+                "duplicate_request_positions": duplicate_position_count,
+                "missing_active_users": missing_user_count,
+                "missing_active_movies": missing_movie_count,
+                "already_rated_recommendations": seen_recommendation_count,
+                "schema": output.schema.jsonValue(),
+            }
+            logger.info("recommendation_output_validation %s",
+                        json.dumps(output_validation, sort_keys=True, default=str))
+            if any(output_validation[key] for key in (
+                "invalid_position_rows", "duplicate_request_movie_keys", "missing_active_users",
+                "duplicate_request_positions", "missing_active_movies", "already_rated_recommendations",
+            )):
+                raise ValueError("Generated recommendations failed output integrity checks")
             if output_count:
-                output.write.mode("errorifexists").parquet(args.recommendations_path)
+                if args.recommendations_path:
+                    output.write.mode("errorifexists").parquet(args.recommendations_path)
+                if args.jsonl_recommendations_root:
+                    # Release the validation cache before toLocalIterator streams
+                    # rows; this avoids stale cached SparkPlan sessions on Windows.
+                    output.unpersist(blocking=True)
+                    published_path = export_user_recommendations_jsonl(
+                        output, args.jsonl_recommendations_root, args.batch_id
+                    )
+                    jsonl_recommendations_path = published_path
+                    logger.info("recommendations_jsonl_published path=%s rows=%s",
+                                published_path, output_count)
+                if args.validate_recommendations and not args.recommendations_path \
+                        and not args.jsonl_recommendations_root:
+                    logger.info("recommendations validated in memory; no Parquet output requested")
             else:
                 logger.warning("recommendations are empty; no Parquet path created")
         else:
             output_count = 0
+            output_validation = None
 
         metadata = {
             "run_id": run_id, "batch_id": args.batch_id,
@@ -876,7 +1032,9 @@ def run(args) -> dict:
             "tuning_results": tuning, "validation_blend": validation_blend,
             "test_regression": test_regression,
             "test_ranking": ranking, "recommendations_rows": output_count,
+            "recommendation_output_validation": output_validation,
             "recommendations_path": args.recommendations_path,
+            "jsonl_recommendations_path": jsonl_recommendations_path,
             "model_path": args.model_path,
         }
         logger.info("run_summary %s", json.dumps(metadata, sort_keys=True, default=str))

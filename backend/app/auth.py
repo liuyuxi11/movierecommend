@@ -1,4 +1,5 @@
 import os
+import secrets
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
@@ -7,6 +8,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 from app.models import AdminUser, User
+from app.redis_cache import get_redis
 
 load_dotenv()
 
@@ -35,7 +37,11 @@ def create_access_token(data: dict):
 
 def create_refresh_token(data: dict):
     to_encode = data.copy()
-    to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(days=7), "token_type": "refresh"})
+    to_encode.update({
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "token_type": "refresh",
+        "jti": secrets.token_urlsafe(24),
+    })
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -86,6 +92,26 @@ async def refresh_token_pair(token: str, *, admin_account: bool = False) -> dict
         else get_user_token_version(account)
     )
     if account is None or payload.get("ver", 0) != expected_version:
+        raise invalid
+    token_id = payload.get("jti")
+    try:
+        remaining_ttl = int(payload["exp"]) - int(datetime.now(timezone.utc).timestamp())
+        if not isinstance(token_id, str) or not token_id or remaining_ttl <= 0:
+            raise invalid
+        claimed = await get_redis().set(
+            f"auth:refresh-used:{token_id}",
+            "1",
+            ex=remaining_ttl,
+            nx=True,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="令牌轮换服务暂不可用",
+        ) from exc
+    if not claimed:
         raise invalid
     return create_token_pair(subject, expected_version)
 

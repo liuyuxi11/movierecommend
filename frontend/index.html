@@ -233,23 +233,23 @@
           <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg>
         </div>
       </div>
-      <div class="spark-title">Spark ALS 协同过滤引擎计算中</div>
+      <div class="spark-title">正在为您更新推荐列表</div>
       <div class="spark-steps" id="sparkSteps">
         <div class="spark-step" data-step="1">
           <span class="spark-step-ico">1</span>
-          <span>正在读取您提交的个性化评分 (personalratings)…</span>
+          <span>正在读取您最新的评分与偏好…</span>
         </div>
         <div class="spark-step" data-step="2">
           <span class="spark-step-ico">2</span>
-          <span>Spark MLlib ALS 协同过滤模型矩阵分解计算中…</span>
+          <span>正在读取离线 ALS 候选并结合热门与类型偏好重排…</span>
         </div>
         <div class="spark-step" data-step="3">
           <span class="spark-step-ico">3</span>
-          <span>正在从 50,581 部影片中匹配 Top 10 推荐结果…</span>
+          <span>正在为您更新最多 Top 20 推荐结果…</span>
         </div>
       </div>
       <div class="spark-progress"><i id="sparkProgressBar"></i></div>
-      <div class="spark-note">首次计算约需 10s ~ 2min，请耐心等待</div>
+      <div class="spark-note">任务由后台队列处理，ALS 模型按离线批次更新</div>
     </div>
   </div>
 

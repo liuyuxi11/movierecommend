@@ -185,13 +185,14 @@
     });
 
     candidates.sort((a, b) => b.score - a.score);
-    const top = candidates.slice(0, 10).map((c, i) => ({
+    const top = candidates.slice(0, 20).map((c, i) => ({
       movieid: c.movie.movieid,
       moviename: c.movie.moviename,
       name_zh: c.movie.name_zh,
       picture: c.movie.picture,
       position: i + 1,
-      prediction_score: Math.round(Math.min(4.99, Math.max(3.2, c.score * 0.98)) * 100) / 100,
+      prediction_score: Math.round((1 - i / Math.max(candidates.length, 1)) * 1000000) / 1000000,
+      recommendation_source: 'als_rerank',
       score: c.score
     }));
 
@@ -200,11 +201,6 @@
     recs[userId] = { request_id: requestId, generated_at: new Date().toISOString(), items: top };
     LS.set('recommendations', recs);
     return recs[userId];
-  };
-
-  const matchPercent = function (score) {
-    if (score === null || score === undefined || isNaN(Number(score))) return null;
-    return Math.min(99, Math.max(70, Math.round(score * 20)));
   };
 
   /* ---------- 对外服务 ---------- */
@@ -427,7 +423,8 @@
       if (!bag) return { code: 200, request_id: null, items: [] };
       const items = bag.items.map(it => ({
         movieid: it.movieid, moviename: it.moviename, name_zh: it.name_zh,
-        picture: it.picture, position: it.position, prediction_score: it.prediction_score
+        picture: it.picture, position: it.position, prediction_score: it.prediction_score,
+        recommendation_source: it.recommendation_source || 'als_rerank'
       }));
       return { code: 200, request_id: bag.request_id, items };
     },
@@ -488,7 +485,6 @@
     },
 
     /* 工具 */
-    matchPercent,
     allMovies: ALL_MOVIES
   };
 })();

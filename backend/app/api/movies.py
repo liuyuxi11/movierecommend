@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 from tortoise.exceptions import IntegrityError
+from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
 from app import auth
 from app.models import AdminOperationLog, AdminUser, Category, MovieCategory, MovieInfo
@@ -164,7 +165,12 @@ async def list_movies(
 
     keyword = q.strip() if q else ""
     if keyword:
-        movies = movies.filter(moviename__icontains=keyword)
+        movies = movies.filter(
+            Q(moviename__icontains=keyword)
+            | Q(director__icontains=keyword)
+            | Q(leadactors__icontains=keyword)
+            | Q(typelist__icontains=keyword)
+        )
 
     if category_id is not None:
         category_exists = await Category.filter(

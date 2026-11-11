@@ -1,0 +1,380 @@
+{
+  "batch_id": "79fcab279cb74bd6bd064f6bff3cac81",
+  "completed_at_utc": "2026-11-08T15:06:09.892694+00:00",
+  "data_split": {
+    "mode": "per_user_random",
+    "semantics": "deterministic per-user holdout of current ratings; not a future-event backtest",
+    "test_rows": 85082,
+    "train_cutoff_utc": null,
+    "train_rows": 708251,
+    "valid_cutoff_utc": null,
+    "valid_rows": 85082
+  },
+  "input": {
+    "cross_table_snapshot_atomic": false,
+    "quality": {
+      "active_movie_count": 50628,
+      "active_user_count": 6040,
+      "deleted_movie_rows": 0,
+      "deleted_user_rows": 0,
+      "duplicate_user_movie_keys": 0,
+      "filtered_rows": 0,
+      "freshness": {
+        "latest_active_movie_update_at": {
+          "age_seconds": 887659.98656,
+          "latest_utc": "2026-10-29T08:28:49.543536+00:00"
+        },
+        "latest_active_user_update_at": {
+          "age_seconds": 756412986.530096,
+          "latest_utc": "2002-11-19T20:20:03+00:00"
+        },
+        "latest_rating_at": {
+          "age_seconds": 747695599.530096,
+          "latest_utc": "2003-02-28T17:49:50+00:00"
+        },
+        "latest_recommendation_generated_at": {
+          "age_seconds": 1004589.530096,
+          "latest_utc": "2026-10-28T00:00:00+00:00"
+        }
+      },
+      "input_rows": 878415,
+      "invalid_rating": 0,
+      "null_movieid": 0,
+      "null_rated_at": 0,
+      "null_rating": 0,
+      "null_userid": 0,
+      "observed_rating_max": 5,
+      "observed_rating_min": 1,
+      "orphan_movie": 0,
+      "orphan_user": 0,
+      "rated_at_max_utc": "2003-02-28 17:49:50.000000",
+      "rated_at_min_utc": "2000-04-25 23:05:32.000000",
+      "trainable_movie_count": 3295,
+      "trainable_rows": 878415,
+      "trainable_user_count": 6040
+    },
+    "rating_history_semantics": "current row; rated_at is last update, not immutable history",
+    "rows": 878415,
+    "snapshot_path": null,
+    "snapshot_paths": null,
+    "snapshot_replay": false,
+    "soft_delete_only": true,
+    "source": "mysql_ephemeral_no_snapshot"
+  },
+  "model_path": null,
+  "parameters": {
+    "als_blocks": 10,
+    "baseline_pool": 500,
+    "batch_id": "79fcab279cb74bd6bd064f6bff3cac81",
+    "bayes_prior_strength": 10.0,
+    "candidate_multiplier": 5,
+    "checkpoint_dir": null,
+    "checkpoint_interval": -1,
+    "fallback_pool": 500,
+    "hybrid_popularity_weights": "0,0.1,0.25,0.5,0.75,1",
+    "implicit_prefs": false,
+    "iter_grid": [
+      5
+    ],
+    "jdbc_fetch_size": 10000,
+    "jdbc_partitions": 1,
+    "max_ranking_pairs": 5000000,
+    "model_version": "als-explicit-v1",
+    "positive_threshold": 4,
+    "rank_grid": [
+      32
+    ],
+    "ranking_user_sample": 100,
+    "reg_grid": [
+      0.05
+    ],
+    "seed": 42,
+    "selected_hybrid_popularity_weight": 0.75,
+    "selected_max_iter": 5,
+    "selected_rank": 32,
+    "selected_reg_param": 0.05,
+    "shuffle_partitions": 8,
+    "split_mode": "per_user_random",
+    "top_n": 5
+  },
+  "recommendation_output_validation": {
+    "already_rated_recommendations": 0,
+    "duplicate_request_movie_keys": 0,
+    "duplicate_request_positions": 0,
+    "invalid_position_rows": 0,
+    "missing_active_movies": 0,
+    "missing_active_users": 0,
+    "rows": 30200,
+    "schema": {
+      "fields": [
+        {
+          "metadata": {},
+          "name": "request_id",
+          "nullable": true,
+          "type": "string"
+        },
+        {
+          "metadata": {},
+          "name": "userid",
+          "nullable": true,
+          "type": "integer"
+        },
+        {
+          "metadata": {},
+          "name": "movieid",
+          "nullable": true,
+          "type": "integer"
+        },
+        {
+          "metadata": {},
+          "name": "position",
+          "nullable": false,
+          "type": "integer"
+        },
+        {
+          "metadata": {},
+          "name": "movie_rating_snapshot",
+          "nullable": true,
+          "type": "decimal(4,1)"
+        },
+        {
+          "metadata": {},
+          "name": "prediction_score",
+          "nullable": true,
+          "type": "decimal(10,6)"
+        },
+        {
+          "metadata": {},
+          "name": "algorithm_version",
+          "nullable": false,
+          "type": "string"
+        },
+        {
+          "metadata": {},
+          "name": "generated_at",
+          "nullable": false,
+          "type": "timestamp"
+        }
+      ],
+      "type": "struct"
+    }
+  },
+  "recommendations_path": null,
+  "recommendations_rows": 30200,
+  "run_id": "feb645bc-bc4c-40c5-aebd-e44804f1856e",
+  "snapshot_id": null,
+  "spark_version": "4.0.4",
+  "started_at_utc": "2026-11-08T15:02:43.183703+00:00",
+  "test_ranking": {
+    "als": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.08021877848678213,
+      "mean_category_coverage_ratio": 0.9560000000000001,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.01614130868623449,
+      "precision_at_k": 0.018000000000000002,
+      "recall_at_k": 0.014827667459246407,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "bayesian": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.004557885141294439,
+      "mean_category_coverage_ratio": 1.0,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.03206284258174638,
+      "precision_at_k": 0.026000000000000002,
+      "recall_at_k": 0.013633796214678567,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "evaluation_scope": {
+      "candidate_items": 3291,
+      "candidate_pairs_before_seen_filter": 329100,
+      "candidate_policy": "exact full factorized active catalog per warm user; remove train-seen items before ranking",
+      "evaluated_users": 100,
+      "model_scored_user_item_pairs": 314637,
+      "positive_item_factor_coverage": 1.0,
+      "positive_items_with_factors": 555,
+      "positive_threshold": 4
+    },
+    "hybrid_pop_0.75": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.020966271649954422,
+      "mean_category_coverage_ratio": 0.986,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.12512624321805776,
+      "precision_at_k": 0.11199999999999999,
+      "recall_at_k": 0.05780051965662622,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "popularity": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.010027347310847767,
+      "mean_category_coverage_ratio": 0.9919999999999999,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.10594882035747336,
+      "precision_at_k": 0.10000000000000002,
+      "recall_at_k": 0.0401500315089091,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "random": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.14342145244606502,
+      "mean_category_coverage_ratio": 0.988,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.02440254735483398,
+      "precision_at_k": 0.026000000000000002,
+      "recall_at_k": 0.013800257124691987,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    }
+  },
+  "test_regression": {
+    "mae": 0.6800833575153165,
+    "predictable_rows": 85078,
+    "prediction_coverage": 0.999952986530641,
+    "rmse": 0.8602403184341052,
+    "total_rows": 85082
+  },
+  "tuning_results": [
+    {
+      "fit_eval_seconds": 27.46799999999348,
+      "max_iter": 5,
+      "rank": 32,
+      "reg_param": 0.05,
+      "validation_coverage": 0.9998707129592628,
+      "validation_mae": 0.6923967306745255,
+      "validation_ndcg_at_k": 0.025087401671287538,
+      "validation_precision_at_k": 0.022000000000000002,
+      "validation_rmse": 0.8748015864282942
+    }
+  ],
+  "validation_blend": {
+    "als": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.07774390243902439,
+      "mean_category_coverage_ratio": 0.97,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.025087401671287538,
+      "precision_at_k": 0.022000000000000002,
+      "recall_at_k": 0.019449963924963922,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "evaluation_scope": {
+      "candidate_items": 3280,
+      "candidate_pairs_before_seen_filter": 328000,
+      "candidate_policy": "exact full factorized active catalog per warm user; remove train-seen items before ranking",
+      "evaluated_users": 100,
+      "model_scored_user_item_pairs": 315172,
+      "positive_item_factor_coverage": 1.0,
+      "positive_items_with_factors": 559,
+      "positive_threshold": 4
+    },
+    "hybrid_pop_0": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.07774390243902439,
+      "mean_category_coverage_ratio": 0.97,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.025087401671287538,
+      "precision_at_k": 0.022000000000000002,
+      "recall_at_k": 0.019449963924963922,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "hybrid_pop_0.1": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.04420731707317073,
+      "mean_category_coverage_ratio": 0.9840000000000001,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.05069938011847684,
+      "precision_at_k": 0.046,
+      "recall_at_k": 0.02841147463647464,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "hybrid_pop_0.25": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.036280487804878046,
+      "mean_category_coverage_ratio": 0.9840000000000001,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.057488940610189915,
+      "precision_at_k": 0.054000000000000006,
+      "recall_at_k": 0.030110416435416437,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "hybrid_pop_0.5": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.027134146341463414,
+      "mean_category_coverage_ratio": 0.99,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.07123513038065635,
+      "precision_at_k": 0.07000000000000002,
+      "recall_at_k": 0.03786294446294446,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "hybrid_pop_0.75": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.020121951219512196,
+      "mean_category_coverage_ratio": 0.982,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.07497187609239848,
+      "precision_at_k": 0.06600000000000002,
+      "recall_at_k": 0.03965522163022163,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    },
+    "hybrid_pop_1": {
+      "active_user_list_coverage": 0.016556291390728478,
+      "candidate_policy": "all active catalog items with model item factors scored for every warm evaluation user; exclude train-seen",
+      "empty_list_users": 0,
+      "evaluated_users": 100,
+      "item_coverage": 0.007317073170731708,
+      "mean_category_coverage_ratio": 0.9919999999999999,
+      "mean_list_size": 5.0,
+      "ndcg_at_k": 0.0744188798729206,
+      "precision_at_k": 0.06,
+      "recall_at_k": 0.044377679455620635,
+      "short_list_users": 0,
+      "warm_test_user_list_coverage": 1.0
+    }
+  }
+}

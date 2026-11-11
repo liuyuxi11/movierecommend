@@ -52,7 +52,7 @@ if args.probe_mysql:
             print(f"ERROR: {name} is not set")
             raise SystemExit(1)
     print(f"jdbc_host_configured={bool(urlsplit(url[len('jdbc:'):]).hostname)}")
-    from pyspark.sql import SparkSession
+    from pyspark.sql import SparkSession, functions as F
 
     spark = None
     try:
@@ -77,10 +77,34 @@ if args.probe_mysql:
                   .option("driver", "com.mysql.cj.jdbc.Driver")
                   .option("user", os.environ["MYSQL_USER"])
                   .option("password", os.environ["MYSQL_PASSWORD"])
-                  .option("dbtable", "(SELECT DATE_FORMAT(rated_at,'%Y-%m-%d %H:%i:%s.%f') AS rated_at_utc FROM personalratings WHERE rated_at IS NOT NULL ORDER BY ratingid LIMIT 1) AS src")
-                  .load().first())
-        print(f"mysql_rated_at_text_sample={sample.rated_at_utc if sample else 'no rows'}")
-        print("INFO: Compare the timestamp text with the expected UTC value from a known record.")
+                  .option("dbtable", "(SELECT pr.ratingid, pr.rated_at, DATE_FORMAT(pr.rated_at,'%Y-%m-%d %H:%i:%s.%f') AS mysql_rated_at_utc, u.userid AS joined_userid, m.movieid AS joined_movieid FROM personalratings pr LEFT JOIN `user` u ON u.userid=pr.userid LEFT JOIN movieinfo m ON m.movieid=pr.movieid WHERE pr.rated_at=(SELECT MAX(rated_at) FROM personalratings) ORDER BY pr.ratingid LIMIT 1) AS src")
+                  .load()
+                  .select(F.date_format("rated_at", "yyyy-MM-dd HH:mm:ss.SSSSSS")
+                          .alias("spark_rated_at_utc"), "ratingid", "mysql_rated_at_utc")
+                  .first())
+        if sample:
+            spark_time = sample.spark_rated_at_utc
+            mysql_time = sample.mysql_rated_at_utc
+            if spark_time != mysql_time:
+                raise RuntimeError(
+                    f"JDBC timestamp UTC mismatch for ratingid={sample.ratingid}: "
+                    f"mysql_utc={mysql_time}, spark_utc={spark_time}"
+                )
+            print("mysql_rated_at_utc_roundtrip=ok")
+        else:
+            print("mysql_rated_at_utc_roundtrip=no_rows")
+        freshness_sql = """SELECT
+          DATE_FORMAT((SELECT MAX(rated_at) FROM personalratings), '%Y-%m-%d %H:%i:%s.%f') AS latest_rating_at_utc,
+          DATE_FORMAT((SELECT MAX(updated_at) FROM `user` WHERE deleted_at IS NULL), '%Y-%m-%d %H:%i:%s.%f') AS latest_user_update_utc,
+          DATE_FORMAT((SELECT MAX(updated_at) FROM movieinfo WHERE deleted_at IS NULL), '%Y-%m-%d %H:%i:%s.%f') AS latest_movie_update_utc,
+          DATE_FORMAT((SELECT MAX(generated_at) FROM recommendationitem), '%Y-%m-%d %H:%i:%s.%f') AS latest_recommendation_utc
+        """
+        freshness = (spark.read.format("jdbc").option("url", url)
+                     .option("driver", "com.mysql.cj.jdbc.Driver")
+                     .option("user", os.environ["MYSQL_USER"])
+                     .option("password", os.environ["MYSQL_PASSWORD"])
+                     .option("dbtable", f"({freshness_sql}) AS src").load().first().asDict())
+        print(f"mysql_freshness_utc={freshness}")
     finally:
         if spark is not None:
             spark.stop()

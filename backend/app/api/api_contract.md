@@ -54,8 +54,10 @@
 | POST | `/api/recommend/generate` | 用户 | 提交推荐任务 |
 | GET | `/api/recommend/result` | 用户 | 查询当前用户推荐结果 |
 | GET | `/api/recommend/result/{userid}` | 用户，仅本人 | 按用户 ID 查询推荐结果 |
+| GET | `/api/recommend/task/{task_id}` | 用户，仅本人 | 查询推荐任务状态 |
 | GET | `/api/recommend/similar/{movieid}` | 公开 | 相似电影列表 |
 | POST | `/api/recommend/event` | 用户 | 记录推荐行为事件 |
+| GET | `/api/analytics/overview` | 管理员 | 汇总业务及推荐事件指标 |
 | POST | `/api/admin/register` | Bootstrap Header | 注入普通管理员或超级管理员 |
 | POST | `/api/admin/login` | 公开 | 管理员登录 |
 | POST | `/api/admin/refresh` | 公开，需管理员 refresh token | 刷新管理员令牌 |
@@ -89,7 +91,7 @@
 
 **用户登录** `POST /api/auth/login`：`{"account":"13800138000","password":"Movie1234"}`。`account` 可为昵称、手机号或邮箱；兼容字段名 `username` 也可作为账号。成功返回 `access_token`、`refresh_token`、`token_type`、`expires_in`（900）、`refresh_expires_in`（604800）及 `userid`。无效凭据 `401`。
 
-**刷新令牌** `POST /api/auth/refresh`：`{"refresh_token":"<user-refresh-token>"}`。成功返回 `code` 和 `data` 中的新令牌对及有效秒数。
+**刷新令牌** `POST /api/auth/refresh`：`{"refresh_token":"<user-refresh-token>"}`。成功返回 `code` 和 `data` 中的新令牌对及有效秒数；refresh token 带随机 `jti`，每个 token 仅可成功刷新一次。重放返回 `401`，Redis 轮换存储不可用返回 `503`。部署该版本后，旧格式 refresh token（无 `jti`）需重新登录。
 
 **退出** `POST /api/auth/logout`：无请求体，需用户 Bearer token。服务端递增账号 `token_version`，当前及更早签发的令牌立即失效；客户端仍应清除本地令牌。
 
@@ -97,14 +99,14 @@
 
 **修改密码** `PUT /api/auth/me/password`：`{"old_password":"Movie1234","new_password":"Movie5678"}`。新密码 8-255 位且包含字母和数字；原密码错误 `400`。
 
-**申请重置码** `POST /api/auth/forgot-password/request`：`{"email":"fan@example.com"}`。未知邮箱使用通用成功提示；请求间隔 60 秒，验证码 10 分钟过期、最多尝试 5 次。需要 SMTP 配置。验证码当前保存在 API 进程内，多 worker 不共享且服务重启后丢失。
+**申请重置码** `POST /api/auth/forgot-password/request`：`{"email":"fan@example.com"}`。未知邮箱使用通用成功提示；请求间隔 60 秒，验证码 10 分钟过期、最多尝试 5 次。需要 SMTP 和 Redis 配置；Redis 仅保存验证码摘要、冷却状态和尝试次数，验证码成功使用后即失效。
 
 **确认重置** `POST /api/auth/forgot-password/confirm`：`{"email":"fan@example.com","code":"123456","new_password":"Movie5678"}`。验证码必须是 6 位数字；密码需 8-255 位并包含字母、数字。
 
 ### 电影与分类
 
 - `GET /api/movies/random`：无参数，返回 `data` 数组，最多 10 部有效电影，每项含 `movieid,moviename,picture`。
-- `GET /api/movies`：查询参数 `q`（电影名模糊查询，最多 100 字符）、`category_id`（正整数）、`sort_by=rating|popularity|release_time`（默认 `rating`）、`order=asc|desc`（默认 `desc`）、`page`（默认 1，最小 1）、`page_size`（默认 20，范围 1-100）。响应 `data={items,total,page,page_size}`；列表项含 `movieid,moviename,picture,averating,numrating,releasetime`。无效/已删除分类返回 `404`。列表缓存 TTL 为 120 秒。
+- `GET /api/movies`：查询参数 `q`（片名、导演、演员或类型模糊查询，最多 100 字符）、`category_id`（正整数）、`sort_by=rating|popularity|release_time`（默认 `rating`）、`order=asc|desc`（默认 `desc`）、`page`（默认 1，最小 1）、`page_size`（默认 20，范围 1-100）。响应 `data={items,total,page,page_size}`；列表项含 `movieid,moviename,picture,averating,numrating,releasetime`。无效/已删除分类返回 `404`。列表缓存 TTL 为 120 秒。
 - `GET /api/movies/{movieid}`：返回 `data` 中电影详情字段 `movieid,moviename,releasetime,director,leadactors,picture,averating,numrating,description,typelist,categories`；`categories` 是 `{categoryid,name}` 数组，无分类时为空数组。缺失或已删除电影 `404`。
 - `GET /api/movies/categories`：返回有效分类的 `data` 数组，每项 `{categoryid,name}`。
 - `POST /api/movies`：管理员创建电影。必填正整数 `movieid`、`moviename`；可选 `releasetime`（`YYYY-MM-DD`）、`director,leadactors,picture,description,typelist`、`category_ids`（最多 100 个分类 ID）。`movieid` 沿用现有数据主键，不自动生成。成功 `201`。
@@ -119,10 +121,10 @@
 **评分提交** `POST /api/ratings/submit`：
 
 ```json
-{"movieids":[1,2],"ratings":[9,8]}
+{"movieids":[1,2],"ratings":[5,4]}
 ```
 
-数组必须非空且长度相同，电影 ID 为正整数且批次内不重复，分数为 1-10 整数。可选兼容字段 `userid` 必须等于 token 用户 ID。已存在评分更新，不存在则新增；写入使用事务。成功返回 `count`。不存在/软删除电影 `404`，用户 ID 不匹配 `403`。
+数组必须非空且长度相同，电影 ID 为正整数且批次内不重复，分数为 1-5 整数。可选兼容字段 `userid` 必须等于 token 用户 ID。已存在评分更新，不存在则新增；写入使用事务。成功返回 `count`、`recommendation_refresh_queued` 和可选的 `recommendation_request_id`。评分事务提交后会尝试异步刷新该用户推荐；队列不可用不会撤销评分。不存在/软删除电影 `404`，用户 ID 不匹配 `403`。
 
 **我的评分** `GET /api/ratings/me`：分页参数 `page` 默认 1、`page_size` 默认 20（1-100）；返回 `data={items,total,page,page_size}`，评分项含 `ratingid,movieid,moviename,picture,rating,rated_at`。
 
@@ -140,7 +142,7 @@
 
 **举报** `POST /api/comments/{commentid}/reports`：原因枚举 `malicious_attack|insulting_language|harmful_information|excessive_promotion|advertisement|other`。`other` 必须提供非空 `reason_detail`（最多 500 字符）；同用户重复举报 `409`。新举报使评论进入 `review_pending`，在管理员结案前仍展示。
 
-**举报列表** `GET /api/comments/admin/reports`：管理员可选查询 `status=pending|accepted|rejected`；返回数组，目前无分页。
+**举报列表** `GET /api/comments/admin/reports`：管理员可选查询 `status=pending|accepted|rejected`，并支持 `page`（默认 1）、`page_size`（默认 20，1-100）；返回 `data={items,total,page,page_size}`。举报更新、评论状态变更及管理员审计日志在同一事务中提交。
 
 **处理举报** `PUT /api/comments/admin/reports/{reportid}`：`{"status":"accepted"}` 或 `{"status":"rejected"}`。接受后评论隐藏，驳回后恢复发布；已处理举报 `409`，不存在 `404`。管理员删除评论：`DELETE /api/comments/admin/{commentid}`，执行软删除。
 
@@ -148,13 +150,21 @@
 
 **生成推荐** `POST /api/recommend/generate`：用户 Bearer token，无请求体。成功 HTTP `202`，返回 `request_id`、Celery `task_id`。队列不可用返回 `503`。
 
-**查询结果** `GET /api/recommend/result` 查询当前用户；`GET /api/recommend/result/{userid}` 只允许查询自己的 ID，否则 `403`。尚无结果时返回空 `items` 和空 `request_id`。结果项包含 `movieid,moviename,picture,position,prediction_score`。
+**查询结果** `GET /api/recommend/result` 查询当前用户；`GET /api/recommend/result/{userid}` 只允许查询自己的 ID，否则 `403`。尚无结果时返回空 `items` 和空 `request_id`。结果项包含 `movieid,moviename,picture,position,prediction_score,recommendation_source`。列表最多 20 项，候选不足时可以少于 20。`prediction_score` 是 0–1 的本列表排序分，不是电影评分、ALS 原始分或匹配概率；来源为 `als_rerank`、`popular_fallback`，旧批次标记为 `legacy` 且不展示分数。
 
-当前 Celery 任务写入的是 popularity 排序的 `popularity-v1` 回退结果，按电影现有平均评分填充 `prediction_score`，并非 ALS 模型预测值。ALS/Spark 算法由算法负责人实现，本契约不承诺其已完成。结果缓存 TTL 为 300 秒。
+**任务状态** `GET /api/recommend/task/{task_id}`：只允许任务所属用户查询。返回 Celery task state；成功时含任务结果，失败时仅返回错误类型。Redis 中的任务归属映射保留 24 小时。
 
-**相似电影** `GET /api/recommend/similar/{movieid}?limit=10`：公开访问，`limit` 默认 10、范围 1-50；当前使用类型字符串和热度排序回退逻辑。
+Celery 任务读取离线 ALS JSONL 候选，使用 ALS 候选次序、热门榜、当前评分的类型偏好和近 90 天反馈计算统一的列表排序分；点击电影最多增加 0.10 排序分，不感兴趣电影会被排除。结果先提交 `recommendationitem`，再主动写 Redis；Redis 失败时 API 可回源 MySQL。缓存 TTL 默认为 300 秒。
+
+评分事务提交后，`POST /api/ratings/submit` 会尝试投递 `recommendation.refresh_user`，响应增加 `recommendation_refresh_queued` 和 `recommendation_request_id`。刷新失败不回滚已提交评分。该快速刷新复用离线 ALS 候选并更新类型偏好重排；不启动 Spark，也不即时重训 ALS 因子。
+
+曝光、点击和“不感兴趣”事件会被记录到 `recommendationevent`；近 90 天点击和不感兴趣事件进入在线重排，事件尚未用于 ALS 训练。
+
+**相似电影** `GET /api/recommend/similar/{movieid}?limit=10`：公开访问，`limit` 默认 10、范围 1-50；优先用 `moviecategory` 类别集合计算 Jaccard 相似度，再按评分、热度和 ID 稳定排序；无分类关联时回退到 `typelist` token Jaccard。候选池最多 5,000 部。
 
 **推荐事件** `POST /api/recommend/event`：`{"request_id":"<request_id>","movieid":1,"event_type":"impression"}`。事件类型为 `impression|click|not_interested`；请求批次和电影必须属于当前用户且电影有效。
+
+**分析总览** `GET /api/analytics/overview`：管理员访问，可传带时区的 `start_at`、`end_at`；默认统计最近 30 天推荐事件。响应中的 CTR 和不感兴趣率按事件数计算，分母均为曝光事件数；无曝光时返回 `null`。总量指标从明细表实时聚合，适合低频管理端查看。
 
 ### 管理员与审计
 
@@ -172,7 +182,7 @@
 
 **用户管理**（仅超级管理员）：`GET /api/admin/users` 支持 `page`（默认 1）、`page_size`（默认 20，1-100）、`status=active|disabled`；列表当前也会包含软删除用户。`PUT /api/admin/users/{userid}` 请求 `{"status":"disabled"}` 或 `{"status":"active"}`。`DELETE /api/admin/users/{userid}` 软删除。
 
-**管理员账号管理**（仅超级管理员）：`GET /api/admin/accounts` 无分页；`POST /api/admin/accounts` 请求字段同注入管理员，不需要 Bootstrap Header；`PUT /api/admin/accounts/{adminid}` 可传 `role`、`status`（`active|disabled`）中的一个或两个，例如 `{"role":"admin","status":"active"}`；`DELETE /api/admin/accounts/{adminid}` 软删除。不能禁用或删除当前登录的管理员。
+**管理员账号管理**（仅超级管理员）：`GET /api/admin/accounts` 支持 `page`（默认 1）和 `page_size`（默认 20，范围 1-100），返回 `data={items,total,page,page_size}`；`POST /api/admin/accounts` 请求字段同注入管理员，不需要 Bootstrap Header；`PUT /api/admin/accounts/{adminid}` 可传 `role`、`status`（`active|disabled`）中的一个或两个，例如 `{"role":"admin","status":"active"}`；`DELETE /api/admin/accounts/{adminid}` 软删除。不能禁用或删除当前登录的管理员。
 
 **操作日志** `GET /api/admin/audit/logs`：管理员可查，`page` 默认 1，`page_size` 默认 20（1-100），可选精确筛选 `action`（最多 100 字符）、`target_type`（最多 50 字符）。响应 `data={items,total,page,page_size}`。
 
@@ -180,11 +190,10 @@
 
 ## 实现边界与联调注意
 
-- `backend/app/analytics.py` 当前没有挂载 FastAPI 路由，因此数据分析需求不是可调用的 HTTP API。
+- `/api/analytics/overview` 仅支持管理员访问；总量统计会扫描业务明细表，适合课程演示和低频查看，不是预聚合报表服务。
 - 根路径 `/` 返回简单服务消息，不代表 MySQL、Redis、SMTP 或 Celery 都通过健康检查。
 - API 代码使用的表、列、索引和唯一约束必须与实际 MySQL 数据库一致。本文不创建、迁移或修改数据库结构；部署环境是否已应用迁移需单独核对。
-- 报告列表未分页；举报处理、评论状态更新和审计日志写入不是同一事务，数据库异常时可能部分完成。
-- 刷新 token 当前未做服务端单次轮换；登出、改密、重置密码以及管理员/用户状态变更会递增 `token_version`，使旧令牌失效。用户/管理员被禁用或软删除后，后续认证请求也会因重新加载账号而失败。
+- Refresh token 通过 Redis `SET NX` 原子标记实现单次轮换；登出、改密、重置密码以及管理员/用户状态变更会递增 `token_version`，使旧令牌失效。用户/管理员被禁用或软删除后，后续认证请求也会因重新加载账号而失败。
 - 静态导入/OpenAPI 检查不等于真实 MySQL、Redis、SMTP、Celery Worker 端到端测试。前端联调前应在目标环境分别验证这些依赖。
 
 ## Swagger 联调顺序

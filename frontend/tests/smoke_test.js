@@ -112,10 +112,12 @@ const assert = (cond, msg) => {
   // 推荐
   await Api.generateRecommend();
   const rec = await Api.recommendResult();
-  assert(rec.items.length === 10, '推荐结果 10 部');
+  assert(rec.items.length === 20, '推荐结果 Top-20');
   assert(rec.items[0].position === 1, '推荐位置从 1 开始');
+  assert(rec.items[19].position === 20, 'Top-20 位置连续');
   assert(!ids.includes(rec.items[0].movieid), '推荐不包含已评分电影');
-  assert(Api.matchPercent(4.9) >= 90, '匹配度换算');
+  assert(rec.items.every(item => item.prediction_score >= 0 && item.prediction_score <= 1), '排序分位于 0-1');
+  assert(rec.items.every(item => item.recommendation_source === 'als_rerank'), '推荐来源字段');
 
   // 影评 / 相似
   const reviews = await Api.reviews(109487);

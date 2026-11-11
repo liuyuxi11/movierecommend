@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -16,6 +16,7 @@ from app.auth import get_current_user
 from app.avatar_storage import save_avatar
 from app.email_service import send_password_reset_code, smtp_configured
 from app.models import AdminUser, User
+from app.redis_cache import get_redis
 from app.schemas import (
     PasswordResetConfirm,
     PasswordResetRequest,
@@ -30,7 +31,25 @@ router = APIRouter()
 _RESET_CODE_TTL = timedelta(minutes=10)
 _RESET_CODE_COOLDOWN = timedelta(seconds=60)
 _RESET_MAX_ATTEMPTS = 5
-_reset_codes: dict[str, dict[str, object]] = {}
+_RESET_CODE_TTL_SECONDS = int(_RESET_CODE_TTL.total_seconds())
+_RESET_CODE_CONSUME_SCRIPT = """
+local code_hash = redis.call('GET', KEYS[1])
+if not code_hash then return 0 end
+local attempts = redis.call('INCR', KEYS[2])
+if attempts == 1 then redis.call('EXPIRE', KEYS[2], ARGV[2]) end
+if attempts > tonumber(ARGV[3]) then
+  redis.call('DEL', KEYS[1], KEYS[2])
+  return -2
+end
+if code_hash ~= ARGV[1] then return -1 end
+redis.call('DEL', KEYS[1], KEYS[2])
+return 1
+"""
+
+
+def _reset_key(email: str, suffix: str) -> str:
+    email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
+    return f"auth:password-reset:{email_hash}:{suffix}"
 
 
 async def _identity_conflict(
@@ -198,63 +217,77 @@ async def request_password_reset(data: PasswordResetRequest):
     user = await User.filter(
         email__iexact=email, deleted_at=None, status="active"
     ).first()
-    now = datetime.now(timezone.utc)
-    previous = _reset_codes.get(email)
-    if previous and now - previous["sent_at"] < _RESET_CODE_COOLDOWN:
+    if user is None:
+        return {"code": 200, "msg": "\u5982\u679c\u90ae\u7bb1\u5df2\u6ce8\u518c\uff0c\u9a8c\u8bc1\u7801\u5c06\u53d1\u9001\u5230\u8be5\u90ae\u7bb1"}
+
+    client = get_redis()
+    code_key = _reset_key(email, "code")
+    attempts_key = _reset_key(email, "attempts")
+    cooldown_key = _reset_key(email, "cooldown")
+    try:
+        acquired = await client.set(
+            cooldown_key, "1", ex=int(_RESET_CODE_COOLDOWN.total_seconds()), nx=True
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="验证码存储服务暂不可用",
+        ) from exc
+    if not acquired:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="\u9a8c\u8bc1\u7801\u53d1\u9001\u8fc7\u4e8e\u9891\u7e41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5",
         )
 
-    if user is None:
-        return {"code": 200, "msg": "\u5982\u679c\u90ae\u7bb1\u5df2\u6ce8\u518c\uff0c\u9a8c\u8bc1\u7801\u5c06\u53d1\u9001\u5230\u8be5\u90ae\u7bb1"}
-
     code = f"{secrets.randbelow(1_000_000):06d}"
     try:
+        await client.set(code_key, hashlib.sha256(code.encode("utf-8")).hexdigest(), ex=_RESET_CODE_TTL_SECONDS)
+        await client.delete(attempts_key)
         await send_password_reset_code(email, code)
     except Exception as exc:
+        await client.delete(code_key, attempts_key, cooldown_key)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="\u9a8c\u8bc1\u7801\u90ae\u4ef6\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 SMTP \u914d\u7f6e",
         ) from exc
-
-    _reset_codes[email] = {
-        "code_hash": hashlib.sha256(code.encode("utf-8")).hexdigest(),
-        "expires_at": now + _RESET_CODE_TTL,
-        "sent_at": now,
-        "attempts": 0,
-    }
     return {"code": 200, "msg": "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\uff0c\u8bf7\u67e5\u6536\u90ae\u7bb1"}
 
 
 @router.post("/forgot-password/confirm")
 async def confirm_password_reset(data: PasswordResetConfirm):
     email = str(data.email).lower()
-    record = _reset_codes.get(email)
-    now = datetime.now(timezone.utc)
-    if not record or now >= record["expires_at"]:
-        _reset_codes.pop(email, None)
+    client = get_redis()
+    try:
+        result = await client.eval(
+            _RESET_CODE_CONSUME_SCRIPT,
+            2,
+            _reset_key(email, "code"),
+            _reset_key(email, "attempts"),
+            hashlib.sha256(data.code.encode("utf-8")).hexdigest(),
+            _RESET_CODE_TTL_SECONDS,
+            _RESET_MAX_ATTEMPTS,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="验证码存储服务暂不可用",
+        ) from exc
+    if result == 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u9a8c\u8bc1\u7801\u65e0\u6548\u6216\u5df2\u8fc7\u671f")
-    if record["attempts"] >= _RESET_MAX_ATTEMPTS:
-        _reset_codes.pop(email, None)
+    if result == -2:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u9a8c\u8bc1\u7801\u5c1d\u8bd5\u6b21\u6570\u8fc7\u591a")
-
-    record["attempts"] += 1
-    code_hash = hashlib.sha256(data.code.encode("utf-8")).hexdigest()
-    if not secrets.compare_digest(code_hash, record["code_hash"]):
+    if result != 1:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u9a8c\u8bc1\u7801\u9519\u8bef")
 
     user = await User.filter(
         email__iexact=email, deleted_at=None, status="active"
     ).first()
     if user is None:
-        _reset_codes.pop(email, None)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u9a8c\u8bc1\u7801\u65e0\u6548\u6216\u5df2\u8fc7\u671f")
 
     user.password = auth.get_password_hash(data.new_password)
     user.token_version += 1
     await user.save(update_fields=["password", "token_version", "updated_at"])
-    _reset_codes.pop(email, None)
     return {"code": 200, "msg": "\u5bc6\u7801\u91cd\u7f6e\u6210\u529f"}
 
 
@@ -402,4 +435,4 @@ async def refresh_user_token(data: RefreshTokenRequest):
 async def logout_user(current_user: User = Depends(get_current_user)):
     current_user.token_version += 1
     await current_user.save(update_fields=["token_version", "updated_at"])
-    return {"code": 200, "msg": "已退出，请在客户端清除本地令牌；服务端凭证到期前仍可使用"}
+    return {"code": 200, "msg": "已退出，当前及此前签发的令牌已失效；请在客户端清除本地令牌"}

@@ -936,7 +936,7 @@
         const btn = document.getElementById('submitScoreBtn');
         btn.disabled = true;
         try {
-          await Api.submitRatings([Number(movie.movieid)], [myScoreSel]);
+          const ratingResult = await Api.submitRatings([Number(movie.movieid)], [myScoreSel]);
           const user = Net.currentUser();
           const box = document.getElementById('rateResult');
           box.hidden = false;
@@ -952,7 +952,9 @@
           document.getElementById('goRecommendBtn').addEventListener('click', () => {
             location.hash = '#/recommend';
           });
-          UI.toast('评分提交成功 🎉', 'ok');
+          const refreshMessage = Net.mode !== 'real' ? ''
+            : ratingResult.recommendation_refresh_queued ? '，个性化推荐正在后台刷新' : '，推荐刷新任务未提交';
+          UI.toast('评分已保存' + refreshMessage, 'ok');
         } catch (e) {
           UI.toast(e.detail || '评分提交失败', 'warn');
         }
@@ -1111,7 +1113,9 @@
         btn.disabled = true;
         try {
           const res = await Api.submitRatings(ids, scores);
-          UI.toast('批量评分成功，共 ' + res.count + ' 部 🎉', 'ok');
+          const refreshMessage = Net.mode !== 'real' ? ''
+            : res.recommendation_refresh_queued ? '；推荐正在后台刷新' : '；推荐刷新任务未提交';
+          UI.toast('批量评分成功，共 ' + res.count + ' 部' + refreshMessage, 'ok');
           this.quickSelections = {};
           renderStrip();
           this.updateBatchBtn();
@@ -1152,7 +1156,7 @@
             <div class="rate-banner-emoji">⭐</div>
             <div>
               <h1 class="page-title">热烈欢迎用户：<b>${UI.esc(user ? user.username : '')}</b>，请您为以下电影打分：</h1>
-              <div class="page-sub">您的评分将写入 personalratings 表，并作为 Spark ALS 协同过滤模型的冷启动输入</div>
+            <div class="page-sub">新评分会触发推荐列表后台刷新，并用于后续离线 ALS 模型训练</div>
             </div>
             <button type="button" class="btn-ghost" id="ratedListBtn">🎞️ 已评清单</button>
             <button type="button" class="btn-ghost" id="reshuffleBtn">🔄 换一批</button>
@@ -1242,7 +1246,7 @@
         btn.disabled = true;
         btn.textContent = '提交中…';
         try {
-          await Api.submitRatings(ids, scores);
+          const ratingResult = await Api.submitRatings(ids, scores);
           const box = document.createElement('div');
           box.className = 'rate-success-panel';
           box.innerHTML = `
@@ -1250,7 +1254,7 @@
             <h2>亲爱的用户：${UI.esc(user.username)}，祝贺评分成功！</h2>
             <p>您的偏好已记入数据库 personalratings 表，共 ${ids.length} 部电影</p>
             <button type="button" class="btn-gold lg" id="goRecFromRate">✨ 点击这里为您推荐电影</button>
-            <div class="rate-success-panel-note">即将调用 Spark ALS 协同过滤引擎计算您的专属片单</div>`;
+            <div class="rate-success-panel-note">${Net.mode !== 'real' ? '提交后可查看演示推荐列表' : ratingResult.recommendation_refresh_queued ? '推荐结果正在后台更新，完成后打开推荐页即可查看' : '评分已保存，但刷新任务未提交'}</div>`;
           view.querySelector('.rate-footer').insertAdjacentElement('afterend', box);
           box.scrollIntoView({ behavior: 'smooth', block: 'center' });
           document.getElementById('goRecFromRate').addEventListener('click', () => { location.hash = '#/recommend'; });
@@ -1272,7 +1276,7 @@
             <div>
               <h1 class="page-title">🎯 亲爱的用户：<b>${UI.esc(user ? user.username : '')}</b>，猜您喜欢的电影</h1>
               <div class="rec-badges">
-                <span class="alg-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg>Spark ALS 协同过滤引擎已为您精准匹配 Top 10 佳片</span>
+                <span class="alg-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg>ALS 个性化排序 · 最多 Top 20</span>
               </div>
             </div>
             <div class="rec-actions">
@@ -1289,6 +1293,17 @@
         bag = await Api.recommendResult();
       } catch (e) {
         bag = null;
+      }
+
+      const pendingRefreshId = Net.mode === 'real'
+        ? sessionStorage.getItem('recommendation_refresh_request_id') : null;
+      if (pendingRefreshId) {
+        bag = await this.waitForRecommendationRequest(pendingRefreshId, bag);
+        if (bag && bag.request_id === pendingRefreshId) {
+          sessionStorage.removeItem('recommendation_refresh_request_id');
+        } else {
+          UI.toast('推荐刷新仍在后台处理，当前先显示最近一次结果', 'warn');
+        }
       }
 
       const items = bag && bag.items ? bag.items : [];
@@ -1316,7 +1331,7 @@
           <div class="state-box rec-empty">
             <div class="state-ico">🎯</div>
             <div class="state-title">还没有为您生成的推荐结果</div>
-            <div class="state-sub">${Net.mode === 'mock' ? '先参与打分，再触发 ALS 引擎为您生成专属片单' : '点击下方按钮触发 Spark ALS 推荐任务（生成后结果将保存在数据库）'}</div>
+            <div class="state-sub">${Net.mode === 'mock' ? '先参与评分，再生成您的推荐列表' : '提交推荐任务后，系统会读取离线 ALS 候选并更新您的推荐列表'}</div>
             <button type="button" class="btn-gold lg" id="recGenerateBtn">✨ 生成我的专属推荐</button>
           </div>`;
         document.getElementById('recGenerateBtn').addEventListener('click', () => this.runSparkFlow(body));
@@ -1326,29 +1341,38 @@
       this.renderRecommendResult(body, items);
     },
 
+    async waitForRecommendationRequest(requestId, initialResult, timeoutMs = 15000) {
+      let result = initialResult;
+      const deadline = Date.now() + timeoutMs;
+      while ((!result || result.request_id !== requestId) && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        try { result = await Api.recommendResult(); } catch (e) { /* Keep the last readable result. */ }
+      }
+      return result;
+    },
+
     renderRecommendResult(body, items) {
-      const fmtScore = v => (v === null || v === undefined || isNaN(Number(v)) ? '—' : Number(v).toFixed(2));
-      const fmtPct = p => (p === null ? '—' : p + '%');
+      const fmtScore = v => (v === null || v === undefined || isNaN(Number(v)) ? '—' : Number(v).toFixed(3));
       const top3 = items.slice(0, 3);
       const rest = items.slice(3);
       const featSlides = top3.map((it, i) => {
         const movie = this.resolveRecMovie(it);
         const zh = it.name_zh || it.moviename || '';
-        const score = Number(it.prediction_score);
-        const pct = Api.matchPercent(score);
+        const score = it.prediction_score == null ? null : Number(it.prediction_score);
+        const source = it.recommendation_source === 'popular_fallback' ? '热门补位'
+          : it.recommendation_source === 'legacy' ? '历史推荐' : 'ALS 个性化';
         const crew = movie && movie.director
           ? `<div class="feat-crew">导演：${UI.esc(movie.director)}${movie.leadactors ? ' · 主演：' + UI.esc(String(movie.leadactors).slice(0, 60)) : ''}</div>` : '';
         return `
           <div class="feat-slide ${i === 0 ? 'active' : ''}" data-i="${i}" data-id="${it.movieid}">
             <div class="feat-poster">${UI.posterImg(it.picture || (movie && movie.picture), zh, '')}</div>
             <div class="feat-info">
-              <div class="feat-badges"><span class="feat-rank">TOP ${it.position}</span><span class="feat-alg">Spark ALS</span></div>
+              <div class="feat-badges"><span class="feat-rank">TOP ${it.position}</span><span class="feat-alg">${source}</span></div>
               <h3 class="feat-name">${UI.esc(zh)}</h3>
               <div class="feat-en">${UI.esc(it.moviename || '')}</div>
               ${crew}
               <div class="feat-scores">
-                <span class="feat-score">推荐指数 <b>${fmtScore(score)}</b></span>
-                <span class="feat-match">匹配度 <b>${fmtPct(pct)}</b></span>
+                <span class="feat-score">本列表排序分 <b>${fmtScore(score)}</b></span>
               </div>
               <p class="feat-desc">${UI.esc(movie ? (movie.tagline || (movie.description ? String(movie.description).slice(0, 120) + '…' : '暂无简介')) : '暂无简介')}</p>
               <div class="feat-actions">
@@ -1378,18 +1402,19 @@
         <div class="rec-grid" id="recGrid">
           ${items.map(it => {
             const zh = it.name_zh || it.moviename;
-            const score = Number(it.prediction_score);
-            const pct = Api.matchPercent(score);
+            const score = it.prediction_score == null ? null : Number(it.prediction_score);
+            const source = it.recommendation_source === 'popular_fallback' ? '热门补位'
+              : it.recommendation_source === 'legacy' ? '历史推荐' : 'ALS 个性化';
             return `
-              <article class="rec-card" data-id="${it.movieid}" data-score="${isNaN(score) ? '' : score}">
+              <article class="rec-card" data-id="${it.movieid}" data-score="${score === null || isNaN(score) ? '' : score}">
                 <div class="poster">
                   ${UI.posterImg(it.picture, zh, '')}
                   <span class="rank-badge r${Math.min(3, it.position)}">${it.position}</span>
-                  <span class="rec-score-badge">${fmtScore(score)}<i>分</i></span>
+                  <span class="rec-score-badge">${fmtScore(score)}<i>排序分</i></span>
                 </div>
                 <h3 class="mc-name">${UI.esc(zh)}</h3>
                 <div class="mc-sub">${UI.esc(it.moviename || '')}</div>
-                <div class="rec-match">匹配度 ${fmtPct(pct)}</div>
+                <div class="rec-match">${source} · 本列表排序分 ${fmtScore(score)}</div>
                 <div class="rec-card-actions">
                   <button type="button" class="pa-btn primary" data-act="detail">查看详情</button>
                   <button type="button" class="pa-btn" data-act="not">不感兴趣</button>
@@ -1420,7 +1445,7 @@
         e.stopPropagation();
         const id = Number(b.dataset.id);
         this.trackRecEvent(id, 'not_interested');
-        UI.toast('已记录“不感兴趣”，将优化您的推荐', 'ok');
+        UI.toast('已记录“不感兴趣”反馈', 'ok');
         const card = b.closest('.rec-card') || b.closest('.feat-slide');
         if (card) card.style.display = 'none';
       }));
@@ -1491,11 +1516,14 @@
 
       /* 真实模式：并行调用生成接口 */
       let genError = null;
+      let genResult = null;
       let genPromise = Promise.resolve();
       if (Net.mode === 'real') {
-        genPromise = Api.generateRecommend().catch(e => { genError = e; });
+        genPromise = Api.generateRecommend().then(result => { genResult = result; })
+          .catch(e => { genError = e; });
       } else {
-        genPromise = Api.generateRecommend().catch(e => { genError = e; });
+        genPromise = Api.generateRecommend().then(result => { genResult = result; })
+          .catch(e => { genError = e; });
       }
 
       setTimeout(() => mark(2, false), t1);
@@ -1513,11 +1541,17 @@
             UI.toast('推荐生成任务服务尚未配置（后端 Celery/Spark 未启用）', 'warn');
           }
         } else {
-          UI.toast('Spark ALS 计算完成，正在为您呈现专属片单 ✨', 'ok');
+          UI.toast('推荐任务已提交，正在等待结果', 'ok');
         }
         if (bodyEl) {
           try {
-            const bag = await Api.recommendResult();
+            let bag = await Api.recommendResult();
+            if (Net.mode === 'real' && genResult && genResult.request_id) {
+              bag = await this.waitForRecommendationRequest(genResult.request_id, bag);
+              if (bag && bag.request_id === genResult.request_id) {
+                UI.toast('推荐列表已更新，正在为您呈现结果', 'ok');
+              }
+            }
             this.recRequestId = bag ? bag.request_id : null;
             const items = bag && bag.items ? bag.items : [];
             if (items.length) this.renderRecommendResult(bodyEl, items);
@@ -1639,9 +1673,9 @@
           row.querySelector('.myrate-save').addEventListener('click', async () => {
           if (sel === null) { UI.toast('请先选择评分', 'warn'); return; }
             try {
-              await Api.submitRatings([id], [sel]);
+              const ratingResult = await Api.submitRatings([id], [sel]);
               row.querySelector('.myrate-score').innerHTML = UI.fmtRating(sel) + '<i>分</i>';
-              UI.toast('评分已更新', 'ok');
+              UI.toast(Net.mode !== 'real' ? '评分已更新' : ratingResult.recommendation_refresh_queued ? '评分已更新，推荐正在后台刷新' : '评分已更新，推荐刷新任务未提交', 'ok');
             } catch (e) {
               UI.toast(e.detail || '更新失败', 'warn');
             }
@@ -2000,8 +2034,8 @@
         if (!this.requireAuth()) { close(); return; }
         if (sel === null) { UI.toast('请先选择评分', 'warn'); return; }
         try {
-          await Api.submitRatings([Number(movieid)], [sel]);
-          UI.toast('评分成功 🎉 已记入 personalratings', 'ok');
+          const ratingResult = await Api.submitRatings([Number(movieid)], [sel]);
+          UI.toast(Net.mode !== 'real' ? '评分已记入 personalratings' : ratingResult.recommendation_refresh_queued ? '评分已记入 personalratings，推荐正在后台刷新' : '评分已保存，推荐刷新任务未提交', 'ok');
         } catch (err) {
           UI.toast(err.detail || '评分失败', 'warn');
         }

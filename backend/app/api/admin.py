@@ -8,7 +8,7 @@ import hmac
 import os
 
 from dotenv import load_dotenv
-from typing import Optional
+from typing import Literal, Optional
 
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -47,7 +47,7 @@ async def refresh_admin_token(data: RefreshTokenRequest):
 async def logout_admin(admin: AdminUser = Depends(auth.get_current_admin)):
     admin.token_version += 1
     await admin.save(update_fields=["token_version", "updated_at"])
-    return {"code": 200, "msg": "已退出，请在客户端清除本地令牌；服务端凭证到期前仍可使用"}
+    return {"code": 200, "msg": "已退出，当前及此前签发的令牌已失效；请在客户端清除本地令牌"}
 
 
 @router.get("/me")
@@ -92,10 +92,10 @@ async def list_like_events(
     return {"code": 200, "data": {"items": rows, "total": total, "page": page, "page_size": page_size}}
 
 
-async def _log(admin: AdminUser, action: str, target_type: str, target_id, detail=None):
+async def _log(admin: AdminUser, action: str, target_type: str, target_id, detail=None, using_db=None):
     await AdminOperationLog.create(
         admin=admin, action=action, target_type=target_type,
-        target_id=str(target_id), detail=detail,
+        target_id=str(target_id), detail=detail, using_db=using_db,
     )
 
 
@@ -103,7 +103,7 @@ async def _log(admin: AdminUser, action: str, target_type: str, target_id, detai
 async def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user_status: Optional[str] = Query(None, alias="status"),
+    user_status: Optional[Literal["active", "disabled"]] = Query(None, alias="status"),
     admin: AdminUser = Depends(auth.require_superadmin),
 ):
     users = User.all()
@@ -118,82 +118,92 @@ async def list_users(
 
 @router.put("/users/{userid}")
 async def update_user_status(userid: int, data: UserAdminUpdate, admin: AdminUser = Depends(auth.require_superadmin)):
-    user = await User.get_or_none(userid=userid, deleted_at=None)
-    if user is None:
-        raise HTTPException(status_code=404, detail="用户不存在或已删除")
-    user.status = data.status
-    user.token_version += 1
-    await user.save(update_fields=["status", "token_version", "updated_at"])
-    await _log(admin, "user.status_update", "user", userid, {"status": data.status})
+    async with in_transaction() as connection:
+        user = await User.filter(userid=userid, deleted_at=None).using_db(connection).select_for_update().first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="用户不存在或已删除")
+        user.status = data.status
+        user.token_version += 1
+        await user.save(update_fields=["status", "token_version", "updated_at"], using_db=connection)
+        await _log(admin, "user.status_update", "user", userid, {"status": data.status}, using_db=connection)
     return {"code": 200, "msg": "用户状态已更新", "data": {"userid": userid, "status": user.status}}
 
 
 @router.delete("/users/{userid}")
 async def delete_user(userid: int, admin: AdminUser = Depends(auth.require_superadmin)):
-    user = await User.get_or_none(userid=userid, deleted_at=None)
-    if user is None:
-        raise HTTPException(status_code=404, detail="用户不存在或已删除")
-    user.deleted_at = datetime.now(timezone.utc)
-    user.token_version += 1
-    await user.save(update_fields=["deleted_at", "token_version", "updated_at"])
-    await _log(admin, "user.delete", "user", userid)
+    async with in_transaction() as connection:
+        user = await User.filter(userid=userid, deleted_at=None).using_db(connection).select_for_update().first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="用户不存在或已删除")
+        user.deleted_at = datetime.now(timezone.utc)
+        user.token_version += 1
+        await user.save(update_fields=["deleted_at", "token_version", "updated_at"], using_db=connection)
+        await _log(admin, "user.delete", "user", userid, using_db=connection)
     return {"code": 200, "msg": "用户已软删除"}
 
 
 @router.get("/accounts")
-async def list_admin_accounts(admin: AdminUser = Depends(auth.require_superadmin)):
-    rows = await AdminUser.all().order_by("-created_at").values(
+async def list_admin_accounts(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    admin: AdminUser = Depends(auth.require_superadmin),
+):
+    accounts = AdminUser.all()
+    total = await accounts.count()
+    rows = await accounts.order_by("-created_at", "-adminid").offset((page - 1) * page_size).limit(page_size).values(
         "adminid", "username", "role", "status", "created_at", "updated_at", "deleted_at"
     )
-    return {"code": 200, "data": rows}
+    return {"code": 200, "data": {"items": rows, "total": total, "page": page, "page_size": page_size}}
 
 
 @router.post("/accounts", status_code=status.HTTP_201_CREATED)
 async def create_admin_account(data: AdminCreate, admin: AdminUser = Depends(auth.require_superadmin)):
-    existing = await AdminUser.filter(username__iexact=data.username).exists()
-    if existing:
-        raise HTTPException(status_code=409, detail="管理员账号已存在")
     try:
-        created = await AdminUser.create(
-            username=data.username, password=auth.get_password_hash(data.password),
-            role=data.role, status="active",
-        )
+        async with in_transaction() as connection:
+            existing = await AdminUser.filter(username__iexact=data.username).using_db(connection).exists()
+            if existing:
+                raise HTTPException(status_code=409, detail="管理员账号已存在")
+            created = await AdminUser.create(
+                username=data.username, password=auth.get_password_hash(data.password),
+                role=data.role, status="active", using_db=connection,
+            )
+            await _log(admin, "admin.create", "admin", created.adminid, {"role": created.role}, using_db=connection)
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="管理员账号已存在") from exc
-    await _log(admin, "admin.create", "admin", created.adminid, {"role": created.role})
     return {"code": 201, "data": {"adminid": created.adminid, "username": created.username, "role": created.role, "status": created.status}}
 
 
 @router.put("/accounts/{adminid}")
 async def update_admin_account(adminid: int, data: AdminAccountUpdate, admin: AdminUser = Depends(auth.require_superadmin)):
-    target = await AdminUser.get_or_none(adminid=adminid, deleted_at=None)
-    if target is None:
-        raise HTTPException(status_code=404, detail="管理员不存在或已删除")
     changes = data.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=422, detail="至少提供 role 或 status")
-    if target.adminid == admin.adminid and changes.get("status") == "disabled":
-        raise HTTPException(status_code=400, detail="不能禁用当前登录的管理员")
-    for key, value in changes.items():
-        setattr(target, key, value)
-    if "role" in changes or "status" in changes:
+    async with in_transaction() as connection:
+        target = await AdminUser.filter(adminid=adminid, deleted_at=None).using_db(connection).select_for_update().first()
+        if target is None:
+            raise HTTPException(status_code=404, detail="管理员不存在或已删除")
+        if target.adminid == admin.adminid and changes.get("status") == "disabled":
+            raise HTTPException(status_code=400, detail="不能禁用当前登录的管理员")
+        for key, value in changes.items():
+            setattr(target, key, value)
         target.token_version += 1
-    await target.save(update_fields=[*changes.keys(), "token_version", "updated_at"])
-    await _log(admin, "admin.update", "admin", adminid, changes)
+        await target.save(update_fields=[*changes.keys(), "token_version", "updated_at"], using_db=connection)
+        await _log(admin, "admin.update", "admin", adminid, changes, using_db=connection)
     return {"code": 200, "msg": "管理员账号已更新"}
 
 
 @router.delete("/accounts/{adminid}")
 async def delete_admin_account(adminid: int, admin: AdminUser = Depends(auth.require_superadmin)):
-    target = await AdminUser.get_or_none(adminid=adminid, deleted_at=None)
-    if target is None:
-        raise HTTPException(status_code=404, detail="管理员不存在或已删除")
-    if target.adminid == admin.adminid:
-        raise HTTPException(status_code=400, detail="不能删除当前登录的管理员")
-    target.deleted_at = datetime.now(timezone.utc)
-    target.token_version += 1
-    await target.save(update_fields=["deleted_at", "token_version", "updated_at"])
-    await _log(admin, "admin.delete", "admin", adminid)
+    async with in_transaction() as connection:
+        target = await AdminUser.filter(adminid=adminid, deleted_at=None).using_db(connection).select_for_update().first()
+        if target is None:
+            raise HTTPException(status_code=404, detail="管理员不存在或已删除")
+        if target.adminid == admin.adminid:
+            raise HTTPException(status_code=400, detail="不能删除当前登录的管理员")
+        target.deleted_at = datetime.now(timezone.utc)
+        target.token_version += 1
+        await target.save(update_fields=["deleted_at", "token_version", "updated_at"], using_db=connection)
+        await _log(admin, "admin.delete", "admin", adminid, using_db=connection)
     return {"code": 200, "msg": "管理员已软删除"}
 
 
@@ -214,7 +224,11 @@ def _require_bootstrap_token(token: Optional[str]) -> None:
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_admin(
     data: AdminCreate,
-    x_admin_bootstrap_token: Optional[str] = Header(default=None),
+    x_admin_bootstrap_token: Optional[str] = Header(
+        default=None,
+        alias="X-Admin-Bootstrap-Token",
+        description="Must match ADMIN_BOOTSTRAP_TOKEN configured by the API process.",
+    ),
 ):
     """Create a normal administrator or super administrator for DB seeding."""
     _require_bootstrap_token(x_admin_bootstrap_token)

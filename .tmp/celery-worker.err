@@ -1,0 +1,9 @@
+[2026-11-10 22:51:45,048: INFO/MainProcess] Connected to redis://127.0.0.1:6379/0
+[2026-11-10 22:51:45,053: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-10 22:51:46,125: INFO/MainProcess] mingle: all alone
+[2026-11-10 22:51:46,219: INFO/MainProcess] celery@LAPTOP-F55396L5 ready.
+[2026-11-10 22:52:20,055: INFO/MainProcess] Task recommendation.generate[83757416-cd59-44ac-ad0e-34a0008f51be] received
+[2026-11-10 22:52:20,191: INFO/MainProcess] recommendation_published request_id=f0a108f68460423188b6c0ae0d2cd3c6 user_id=26382 items=20 algorithm=als-personalized-rerank-v1-o0.75-p0.1-g0.15 cache_written=True hot_pool_available=True
+[2026-11-10 22:52:20,194: INFO/MainProcess] Tortoise-ORM shutdown
+[2026-11-10 22:52:20,225: INFO/MainProcess] Task recommendation.generate[83757416-cd59-44ac-ad0e-34a0008f51be] succeeded in 0.1559999999590218s: {'request_id': 'f0a108f68460423188b6c0ae0d2cd3c6', 'count': 20, 'reused': False, 'cache_written': True, 'hot_pool_available': True}
+[2026-11-10 23:21:44,237: WARNING/MainProcess] Got shutdown from remote

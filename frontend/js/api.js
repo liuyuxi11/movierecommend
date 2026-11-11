@@ -190,7 +190,13 @@
 
     /* ---------- 评分 ---------- */
     submitRatings: function (movieids, ratings) {
-      return this.call(() => Net.post('/api/ratings/submit', { movieids, ratings }), () => window.MockSvc.submitRatings(movieids, ratings));
+      return this.call(() => Net.post('/api/ratings/submit', { movieids, ratings }), () => window.MockSvc.submitRatings(movieids, ratings))
+        .then(result => {
+          if (Net.mode === 'real' && result && result.recommendation_request_id) {
+            sessionStorage.setItem('recommendation_refresh_request_id', result.recommendation_request_id);
+          }
+          return result;
+        });
     },
     myRatings: function (params) {
       const qs = new URLSearchParams();
@@ -228,7 +234,6 @@
     similarMovies: function (movieid) { return window.MockSvc.similarMovies(movieid); },
     ratingCandidates: function (n) { return window.MockSvc.ratingCandidates(n); },
     topRated: function (n) { return window.MockSvc.topRated(n); },
-    matchPercent: function (score) { return window.MockSvc.matchPercent(score); },
     favoriteStatus: function (movieid) {
       if (Net.mode === 'mock') return window.MockSvc.myFavoriteStatus(movieid);
       return null;

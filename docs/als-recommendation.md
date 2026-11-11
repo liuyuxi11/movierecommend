@@ -67,7 +67,7 @@ spark-submit --master "local[*]" backend/jobs/als_recommender.py `
 
 排序评估比较 ALS、热门和固定 seed 的随机基线。三种方法使用相同候选集合：有效电影中有 ALS item factor 的电影；每个用户都排除训练/验证已评分电影。热门度只由训练+验证数据计算。指标包括 Precision@K、Recall@K、NDCG@K、该候选集合内的电影覆盖率、用户覆盖率和平均类别覆盖比例（每用户列表内不同类别数除以推荐电影数，截断到 1）。该类别指标是多样性代理量，不等同于标准列表内距离。ALS 测试用户只评估训练中出现的用户因子；冷启动用户不算排序指标用户分母，另报告覆盖率。类别信息来源于有效 `moviecategory`/`category`。
 
-推荐生成对 ALS 过滤已评分项后不足 Top-N 的用户，以及没有评分因子的活跃用户，使用训练评分数量×均分排序的热门电影补齐。候选来源限定于训练中出现且当前未软删除的电影；若用户已看/评过候选池中全部电影，结果可能少于 N，作业会输出条目数摘要。无有效训练评分时作业明确失败，不会伪造 ALS 模型。
+离线 JSONL 为每个训练用户发布最多 Top-20 候选，按离线选出的 ALS/热门混合排序保留位置。在线 Worker 会读取该候选次序并过滤用户已评分项，再与当前有效热门池合并，依据当前评分的电影类型偏好做快速重排；默认在线权重是离线候选次序 0.75、热门次序 0.10、类型偏好 0.15，属于待实验验证的初始配置。无离线用户候选或列表不足时由热门榜补位。最终最多返回 Top-20；若候选池不足则可能少于 20。评分提交后的刷新不重训 ALS，离线 ALS 因子只在下一轮作业更新。
 
 JDBC 默认单分区读取。`--jdbc-partitions N` 使用 `personalratings.ratingid` 主键范围并行读取；该键单调且适合分片，但提高 N 会增加 MySQL 并发连接和负载。优先从只读副本读取；大规模训练优先保存 Parquet 快照后离线训练。`--shuffle-partitions` 和 `--als-blocks` 应按集群资源调整。ALS checkpoint 目录可用 `--checkpoint-dir` 配置；本地默认位于系统临时目录，集群必须指定 executor 可共同访问的 HDFS/对象存储兼容路径。
 
@@ -82,7 +82,7 @@ ALS 训练程序不提供直接 Spark JDBC 写入。结果 Parquet 经审查后�
 | `movieid` | `movieid` | 有效 `movieinfo.movieid` 外键 |
 | `position` | `position` | 每个用户从 1 连续编号，最大不超过 Top-N |
 | `movie_rating_snapshot` | 同名 | `movieinfo.averating` 快照，不是 ALS 分数 |
-| `prediction_score` | 同名 | ALS 或热门回退的排序分，写入 `DECIMAL(10,6)` |
+| `prediction_score` | 同名 | 在线统一计算的 0–1 列表排序分，写入 `DECIMAL(10,6)`；不是电影评分、匹配概率或可跨批次比较的绝对分 |
 | `algorithm_version` | 同名 | 最大 100 字符 |
 | `generated_at` | 同名 | UTC 时间 |
 

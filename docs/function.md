@@ -4,15 +4,15 @@
 
 电影推荐系统是一个大数据项目，采用前后端分离设计，面向游客、注册用户和后台管理员，提供电影浏览、搜索、评分、评论、收藏、举报处理、个性化推荐和基础数据分析等功能。PySpark 用于离线数据处理与分析；在线业务接口由后端服务承载。
 
-仓库现包含 FastAPI/Tortoise ORM 数据模型、分析查询、MySQL 升级 SQL、依赖清单和虚拟环境配置。完整 FastAPI API、Vue3 前端、Celery 任务实现、PySpark ALS 作业及生产部署配置仍待补充。
+仓库包含 FastAPI/Tortoise ORM 后端、静态 JavaScript 前端、Celery 推荐任务、PySpark ALS 离线作业、MySQL 迁移和本地演示配置；生产部署配置仍需按目标环境补充。
 
 ## 技术栈与架构
 
-- 后端：Python、FastAPI、Tortoise ORM；具体版本待补充。
-- 前端：Vue3；具体版本、构建工具和目录待补充。
-- 大数据与异步任务：PySpark/Spark MLlib ALS 用于离线协同过滤模型训练和批量生成候选结果；Celery 用于异步作业编排，Redis 用作 Celery 消息代理及可选的短期任务结果后端。Spark/PySpark、Celery、Redis 版本及部署模式待补充。
+- 后端：Python、FastAPI、Tortoise ORM；依赖版本见 `requirements.txt` 和 `backend/pyproject.toml`。
+- 前端：原生 JavaScript 静态页面，无 Vue 构建步骤；运行说明见 `frontend/README.md`。
+- 大数据与异步任务：PySpark/Spark MLlib ALS 用于离线协同过滤模型训练和批量候选生成；Celery 用于异步任务编排，Redis 用作消息代理和短期推荐缓存。运行版本及部署模式由目标环境配置。
 - 数据库：输入 SQL 文件 `movierecommend.sql` 的导出元数据标注为 MySQL 8.0.42。实际部署版本及字符集迁移计划待补充。
-- 架构：Vue3 前端通过 HTTP API 与 FastAPI 后端交互；后端通过 Tortoise ORM 访问 MySQL。FastAPI 将模型训练或批量推荐任务投递给 Celery；Celery worker 负责作业编排并提交/调用 PySpark ALS 作业。Redis 承担任务消息传递，可选保存短期任务状态；模型、训练数据快照和推荐结果应由持久化存储保存，不以 Redis 作为长期数据源。认证方式按需求为 JWT，令牌签发、刷新和失效策略待补充。
+- 架构：静态前端通过 HTTP API 与 FastAPI 后端交互；后端通过 Tortoise ORM 访问 MySQL。离线运行 PySpark ALS 作业并发布共享 JSONL 用户候选；Celery Worker 负责在线候选重排、`recommendationitem` 发布和 Redis 缓存更新。Redis 同时承担 Celery 消息代理和短期推荐缓存；MySQL 是推荐结果持久化来源。用户评分提交后通过 Celery 异步刷新推荐列表。
 
 前端与后端部署地址、跨域配置和生产部署方式待补充。
 
@@ -22,7 +22,7 @@
 
 - 注册账号：填写唯一昵称、手机号、邮箱、密码和头像。手机号、邮箱均必填；密码至少 8 位且包含字母和数字；确认密码需与密码一致。
 - 浏览电影：按分类浏览，支持分页，并可按评分、热度、上映时间排序。
-- 搜索电影：按电影名关键词模糊搜索，结果分页；导演、演员和类型搜索范围待补充。
+- 搜索电影：按电影名、导演、演员或类型关键词模糊搜索，结果分页。
 - 查看电影详情和评论；可查看详情页相似电影推荐。
 
 ### 注册用户
@@ -60,9 +60,9 @@
 
 ## 数据分析模块
 
-数据分析范围以用户行为明细和推荐反馈闭环为主。PySpark 用于批量数据清洗、时间范围聚合、维度分析、数据质量检查，以及离线推荐所需的数据整理和特征准备。推荐算法范围包含 Spark MLlib ALS：仅以 `personalratings` 中的用户 ID、电影 ID 和 1–5 分显式评分作为训练数据，过滤软删除用户和电影，不使用 `userfavorite`，异步执行训练、离线评估和批量候选生成。Celery 负责将耗时任务放到后台执行，Redis 负责消息代理；FastAPI 在线请求读取已生成的推荐结果，不在请求处理中启动 Spark 训练作业。
+推荐算法使用 Spark MLlib 显式 ALS：训练源仅为 `personalratings(userid,movieid,rating,rated_at)`，评分范围 1–5；过滤软删除用户和电影，不按用户启用状态过滤，也不使用 `userfavorite`。离线作业负责训练、验证/测试评估、选取混合权重并发布共享 JSONL 候选。Celery Worker 根据离线候选、当前评分产生的类型偏好、近期点击/不感兴趣事件和热门榜重排最多 20 部电影，写入 `recommendationitem`，随后更新 Redis。用户提交评分后，评分事务成功才异步投递单用户刷新任务；API 请求本身不启动 Spark。
 
-ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷启动用户/电影的处理策略、Spark 部署模式和 Celery worker 如何提交 Spark 作业均待补充。建议离线评估同时考虑评分误差指标和 Top-K 排序指标，最终指标及计算口径待确认。模型文件和训练产物需写入持久化存储；具体存储位置待补充。
+ALS 参数和评估口径见 `docs/als-recommendation.md`。Worker 的在线排序权重可通过 `RECOMMENDATION_OFFLINE_RANK_WEIGHT`、`RECOMMENDATION_POPULARITY_RANK_WEIGHT`、`RECOMMENDATION_PROFILE_RANK_WEIGHT` 配置，默认分别为 0.75、0.10、0.15；离线候选次序本身已含 ALS/热门混合信号，因此在线热门权重较低以减少重复计入。权重是初始实验值，须通过固定快照的 Top-K 实验验证后才能作为效果结论。评分触发的刷新复用当前离线 JSONL 候选，不会立即重训 ALS 或更新用户因子；新增评分会影响已评分过滤、类型偏好重排和后续离线训练。
 
 初期指标由明细表聚合，不预建统计快照表。若后续需要缓存周期性分析结果，应先确认分析结果的存储位置、刷新频率和查询接口，再评估增加汇总表或文件存储。
 
@@ -78,7 +78,11 @@ ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷
 | 推荐曝光量、点击率、不感兴趣率 | `recommendationevent.event_type` | 事件包括 `impression`、`click`、`not_interested`；曝光应在推荐项实际进入可视区域后记录 |
 | 管理员操作量 | `adminoperationlog.adminid`、`action`、`created_at` | 按管理员、操作类型和时间范围聚合；日志长期保留 |
 
-推荐只面向登录用户。推荐结果明细保存请求批次、电影、列表位置和算法版本；事件表保存曝光及后续行为。ALS 预测分与 `movieinfo` 的电影评分是不同概念；当前 `recommendresult.rating` 已确认表示电影评分，不能复用为 ALS 预测分。推荐项是否增加独立的 `prediction_score` 字段，或另设模型输出表，需在 ORM/结果表设计前确认。具体去重窗口、点击率分母及“不感兴趣”统计口径待补充。
+推荐只面向登录用户。推荐结果明细保存请求批次、电影、位置、算法版本及排序分；事件表保存曝光及后续行为。`recommendationitem.prediction_score` 在当前 Worker 中承载 0–1 的本次候选列表排序分，不是 1–5 电影评分、ALS 原始预测值或匹配概率。前端同时显示“ALS 个性化”或“热门补位”来源；排序分仅用于解释该列表内的次序，不宜跨用户、批次或算法版本比较。旧 `recommendresult.rating` 仍表示电影评分。
+
+曝光、点击和“不感兴趣”事件会写入 `recommendationevent`。Worker 使用近 90 天点击信号对该电影排序分最多增加 0.10，并过滤近 90 天标记为“不感兴趣”的电影；曝光仅参与统计，不直接影响排序。评分写入会触发单用户刷新，但不会即时重训 ALS 因子。
+
+管理员分析接口 `GET /api/analytics/overview` 汇总用户、电影、评分、评论、举报、收藏、点赞历史、推荐项和管理员操作量；同时返回时间窗内推荐曝光、点击、不感兴趣事件数。CTR 定义为点击事件数/曝光事件数，不感兴趣率定义为不感兴趣事件数/曝光事件数，均按事件计数而非去重用户或去重推荐项；无曝光时比率为 `null`。
 
 ## 数据库表结构概览
 
@@ -100,7 +104,7 @@ ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷
 | `commentreport` | 评论举报；同一用户对同一评论唯一，记录原因和处理结论 |
 | `userfavorite` | 用户电影收藏；想看/已看，取消软删除，重新收藏恢复记录 |
 | `adminoperationlog` | 管理员关键操作日志，长期保留 |
-| `recommendationitem` | 面向登录用户生成的推荐项，记录请求、电影、位置、电影评分快照、ALS 预测分、算法版本及生成时间 |
+| `recommendationitem` | 面向登录用户生成的推荐项，记录请求、电影、位置、电影评分快照、列表排序分、算法版本及生成时间 |
 | `recommendationevent` | 推荐项的曝光、点击和不感兴趣事件 |
 | `recommendresult` | 现有兼容表；其中 `rating` 表示电影评分，不是推荐预测分。迁移和退役计划待补充 |
 
@@ -135,10 +139,10 @@ ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷
 - `movierecommend.sql`：当前表结构及数据导出，是本项目方案分析使用的 SQL 文件。
 - `MovieRecommendDatabase.sql`：仓库中的另一份数据库导出；与主 SQL 文件的版本关系和用途待补充。
 - `movie_recommend/movies.dat`、`personalRatings.dat`、`ratings.dat`：电影和评分数据文件；数据集来源、许可及导入脚本待补充。
-- PySpark 作业目录：当前仓库未提供；建议后续按数据导入/清洗、离线聚合和推荐特征准备划分作业模块，具体目录待补充。
-- Celery worker/task 配置、Redis 配置及 Spark 作业提交脚本：当前仓库未提供，待补充。
+- `backend/jobs/als_recommender.py`：离线训练、评估和 JSONL 发布作业。
+- `backend/app/recommendation_tasks.py`：Celery 在线候选重排与结果发布任务。
+- `backend/app/api/ratings.py`：评分事务提交后投递单用户推荐刷新。
 - `电影推荐系统需求分析.docx`：功能需求文档。
-- FastAPI API、Vue3 前端、Celery 任务和 PySpark 作业代码：待补充。
 
 ## 环境与启动
 
@@ -146,10 +150,8 @@ ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷
 
 - Python 版本：本地虚拟环境使用 Python 3.12.5。
 - FastAPI、Tortoise ORM、Aerich、PySpark、Celery 及数据库驱动的直接依赖版本见 `requirement.txt`。
-- 当前机器检测到 Java 24；与 PySpark 4.0.4 的运行兼容性待验证，Spark 部署模式待补充。
-- Celery、Redis 版本及 Redis 在部署中的高可用、鉴权和持久化配置：待补充。
-- Vue3、Node.js 和包管理器版本：待补充。
-- MySQL 版本：输入 SQL 导出标注 MySQL 8.0.42；实际运行环境待补充。
+- PySpark 4.0.4 使用 Java 21 的本地配置；实际部署的 Spark 模式和资源参数按运行环境确认。
+- Celery、Redis 和 MySQL 版本及部署参数需按目标运行环境记录；输入 SQL 导出元数据标注 MySQL 8.0.42。
 - 数据库连接配置、JWT 密钥及其他环境变量：待补充。敏感配置应通过环境变量或本地配置管理，不应提交密钥。
 
 ### 启动方式
@@ -159,46 +161,52 @@ ALS 参数、训练/验证数据切分方式、评估指标、重训频率、冷
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirement.txt
+python -m pip install -r requirements.txt
 ```
 
-Tortoise 配置读取 `DATABASE_URL`；连接地址需通过环境变量提供。仓库当前没有 FastAPI 应用入口、前端 `package.json`、PySpark 作业、Celery worker 配置或 Redis 服务端，因此这些服务的启动命令待补充。
+Tortoise 配置读取 `DATABASE_URL`；数据库、Redis、Celery 和 ALS 共享路径通过环境变量配置。FastAPI 应用入口、前端静态页面、PySpark 作业及 Celery worker 代码已存在；各环境的服务启动命令需按本地部署设置确认。
 
 升级数据库前先备份，并在确认目标库后执行 `migrations/0001_schema_upgrade.sql`。该脚本清理 `personalratings` 中无法关联应用用户/电影、评分越界、时间戳非法及重复的记录；给定 SQL 导出中的 `user` 表为空，因此其中现有评分会作为孤立记录清理。脚本不会连接或自动执行。
 
-后续应至少提供：
+部署说明还应补充：
 
 1. 数据库创建、迁移及初始数据导入步骤。
 2. Python 依赖安装和 FastAPI 服务启动命令。
-3. 前端依赖安装和 Vue3 开发服务启动命令。
-4. Redis 启动与连接配置，以及 Celery worker（和可选 Celery Beat）的启动命令。
-5. PySpark ALS 作业提交命令、运行模式、配置入口及模型/结果存储位置。
+3. 静态前端服务的部署地址及 FastAPI CORS 配置。
+4. Redis 启动与连接配置，以及 Celery worker 和 Celery Beat 的启动命令。
+5. PySpark ALS 作业提交命令、运行模式、配置入口及模型/结果存储位置。Beat 默认每 7 天触发 `recommendation.train_als`；通过 `ALS_TRAIN_INTERVAL_SECONDS` 配置间隔，需单独启动 Beat 进程。
 6. 完整应用所需环境变量及本地开发配置示例。
+
+在 `backend` 目录启动在线 Worker 和离线训练调度器：
+
+```powershell
+celery -A app.celery_app:celery_app worker --loglevel=INFO --pool=solo
+celery -A app.celery_app:celery_app beat --loglevel=INFO
+```
+
+Beat 的计划任务只负责投递 `recommendation.train_als`；Spark 作业超时可用 `ALS_TRAIN_TIMEOUT_SECONDS` 配置。Windows 下 Worker 使用 `--pool=solo`，Spark/Java/JDBC 环境仍需单独通过 ALS 检查脚本。
 
 ## 接口与数据流概要
 
-实际 API 路径、请求/响应 schema、分页格式、错误码和认证中间件尚未提供，均待补充。按已确认业务规则，核心数据流如下：
+API 路径、请求/响应 schema、分页格式和错误码见 `backend/app/api/api_contract.md`。核心数据流如下：
 
 1. 用户通过 FastAPI 注册或登录；账号数据写入 `user`，登录成功后由后端签发 JWT。
 2. 电影浏览、搜索和分类查询读取未软删除的 `movieinfo`，分类关联由 `moviecategory` 提供。
 3. 用户评分写入或更新 `personalratings`；评论、点赞、收藏和举报写入对应行为表。
 4. 举报创建时，评论进入 `review_pending` 但继续展示；管理员结案后按结果设置为 `hidden` 或恢复为 `published`，后台操作写入 `adminoperationlog`。
-5. 用户推荐请求由 FastAPI 查询已完成的推荐结果；模型未就绪或用户无历史评分时的回退策略待补充。
-6. Celery 接收训练/批量推荐任务，并通过 worker 编排 PySpark ALS 作业；训练结果、模型文件和任务状态分别使用确认后的持久化存储、模型存储和任务状态方案。
-7. PySpark 从数据库或数据文件读取用户评分及必要维度数据，进行清洗、校验、训练/评估和批量候选生成；推荐结果写入确认后的结果存储。
-8. 用户实际看到推荐项时记录曝光，点击和不感兴趣反馈关联对应推荐项；数据分析查询聚合推荐指标及其他用户行为指标。
+5. 用户提交推荐请求时，FastAPI 返回 HTTP 202 和请求/任务 ID；Celery Worker 读取最新离线 JSONL，结合当前用户评分、有效电影和热门候选生成最多 20 项。
+6. Worker 在 MySQL 事务提交 `recommendationitem` 后主动写 Redis。API 读取时优先 Redis，未命中回源 MySQL 并回填缓存。
+7. 评分提交事务成功后，FastAPI 尽力投递 `recommendation.refresh_user`；Worker 完成后产生新的请求批次并覆盖该用户最新缓存。队列不可用不撤销已经保存的评分，响应会报告是否成功投递刷新任务。
+8. 刷新复用离线 ALS JSONL 中的用户候选顺序，不在线启动 Spark；它会根据当前评分更新类型偏好重排，并以热门榜补足。ALS 因子只在下一次离线训练后更新。
+9. 用户实际看到推荐项时记录曝光，点击和不感兴趣反馈关联对应推荐项；数据分析查询聚合推荐指标及其他用户行为指标。
 
 ## 待补充事项
 
-- 后端和前端源码目录、依赖文件、版本及本地启动命令。
-- API 路径清单、接口 schema、错误码、分页与排序参数约定。
-- MySQL 实际版本、迁移工具及目标结构迁移脚本。
-- PySpark/Spark 与 Java 版本、部署模式、作业调度方式、输入/输出存储和数据刷新频率。
-- PySpark 批处理结果由后端实时聚合、写入 MySQL 汇总表，还是保存到文件/数据湖供查询。
-- ALS 训练参数、训练数据切分、评估指标、冷启动策略、模型版本发布/回滚和重训频率。
-- 推荐结果是否持久化 ALS `prediction_score`，以及模型文件和训练产物的持久化位置。
-- Celery worker 与 Spark 的集成方式（本地进程提交、Standalone 或集群作业提交）、任务幂等、重试及失败状态处理。
+- 目标部署环境的服务启动方式、MySQL 版本和 Spark/Celery/Redis 部署参数。
+- PySpark 作业调度频率、输入快照刷新周期及离线批次发布策略。
+- 在线重排权重需使用固定快照和相同候选集做离线对照实验；当前默认值是待验证配置。
+- 评分提交后的刷新是事件触发的在线列表更新，不是实时 ALS 训练。若需让新评分立即影响 ALS 因子，需另外设计因子更新或按用户重训并测量延迟。
 - 两份 SQL 导出文件的版本关系，以及 `recommendresult` 是否在运行环境中有数据或被现有接口使用。
 - 数据集来源、导入流程和使用许可。
 - 推荐算法版本的命名规则、推荐请求 ID 生成规则及分析指标去重口径。
-- 找回密码流程、JWT 失效/刷新策略和管理员权限明细。
+- 管理员权限明细及上线环境的令牌密钥轮换流程。Refresh token 当前按 Redis `jti` 单次轮换；上线此版本后，旧格式 refresh token 需重新登录。
