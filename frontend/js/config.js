@@ -59,3 +59,48 @@ window.GENRE_ALIASES = {
   'FilmNoir': 'Film-Noir',
   'Music': 'Musical'
 };
+
+/* ============================================================
+ * 真实数据库（movierecommend_test.sql 导出）中的分类表内容
+ * categoryid 1-22；演示模式（Mock）直接镜像这 22 个分类
+ * ============================================================ */
+window.REAL_CATEGORIES = [
+  { categoryid: 1, name: 'Animation' },
+  { categoryid: 2, name: 'Comedy' },
+  { categoryid: 3, name: 'Family' },
+  { categoryid: 4, name: 'Adventure' },
+  { categoryid: 5, name: 'Fantasy' },
+  { categoryid: 6, name: 'Romance' },
+  { categoryid: 7, name: 'Drama' },
+  { categoryid: 8, name: 'Action' },
+  { categoryid: 9, name: 'Crime' },
+  { categoryid: 10, name: 'Thriller' },
+  { categoryid: 11, name: 'Horror' },
+  { categoryid: 12, name: 'Science Fiction' },
+  { categoryid: 13, name: 'Mystery' },
+  { categoryid: 14, name: 'History' },
+  { categoryid: 15, name: 'War' },
+  { categoryid: 16, name: 'Foreign' },
+  { categoryid: 17, name: 'Music' },
+  { categoryid: 18, name: 'Documentary' },
+  { categoryid: 19, name: 'Western' },
+  { categoryid: 20, name: 'TV Movie' },
+  { categoryid: 21, name: 'Neo-noir' },
+  { categoryid: 22, name: 'Indie' }
+];
+
+/* typelist 常见写法 → 真实分类名（用于演示模式映射与兜底） */
+window.GENRE_TO_REAL = {
+  'Animation': 'Animation', 'Comedy': 'Comedy', 'Family': 'Family',
+  'Adventure': 'Adventure', 'Fantasy': 'Fantasy', 'Romance': 'Romance',
+  'Drama': 'Drama', 'Action': 'Action', 'Crime': 'Crime',
+  'Thriller': 'Thriller', 'Horror': 'Horror',
+  'Science Fiction': 'Science Fiction', 'Sci-Fi': 'Science Fiction', 'SciFi': 'Science Fiction',
+  'Mystery': 'Mystery', 'History': 'History', 'War': 'War',
+  'Foreign': 'Foreign', 'Music': 'Music', 'Musical': 'Music',
+  'Documentary': 'Documentary', 'Western': 'Western',
+  'TV Movie': 'TV Movie', 'TVMovie': 'TV Movie',
+  'Neo-noir': 'Neo-noir', 'Film-Noir': 'Neo-noir', 'FilmNoir': 'Neo-noir', 'Noir': 'Neo-noir',
+  'Indie': 'Indie',
+  "Children's": 'Family', 'Childrens': 'Family', 'Children': 'Family'
+};

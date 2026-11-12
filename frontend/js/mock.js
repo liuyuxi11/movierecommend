@@ -22,6 +22,24 @@
     return window.UI.parseGenres(m.typelist);
   };
 
+  /* 按真实数据库分类表（22 类）映射电影类型 */
+  const REAL_CATEGORIES = window.REAL_CATEGORIES || window.APP_CONFIG.GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key }));
+  const GENRE_TO_REAL = window.GENRE_TO_REAL || {};
+  const realGenresOf = function (m) {
+    const out = new Set();
+    String(m.typelist || '').split(',').forEach(function (raw) {
+      const key = String(raw).trim();
+      if (!key) return;
+      const real = GENRE_TO_REAL[key];
+      if (real) out.add(real);
+    });
+    return Array.from(out);
+  };
+  const catIdByName = function (name) {
+    const c = REAL_CATEGORIES.find(x => x.name === name);
+    return c ? c.categoryid : null;
+  };
+
   const normalize = function (m) {
     return {
       movieid: m.movieid,
@@ -131,9 +149,10 @@
     const GENRES = window.APP_CONFIG.GENRES;
     let list = ALL_MOVIES.slice();
 
-    if (categoryId !== null && categoryId >= 1 && categoryId <= GENRES.length) {
-      const gkey = GENRES[categoryId - 1].key;
-      list = list.filter(m => genreOf(m).indexOf(gkey) >= 0);
+    if (categoryId !== null) {
+      const cat = REAL_CATEGORIES.find(c => c.categoryid === categoryId);
+      if (!cat) throw { status: 404, detail: '分类不存在或已删除' };
+      list = list.filter(m => realGenresOf(m).indexOf(cat.name) >= 0);
     }
     if (q) {
       list = list.filter(m => {
@@ -350,11 +369,10 @@
       return { code: 200, data: queryMovies(params || {}) };
     },
 
-    /* 分类列表：18 大标准分类，categoryid 为 1-18 */
+    /* 分类列表：镜像真实数据库 movierecommend_test.category（22 类） */
     categories: async function () {
       await delay();
-      const GENRES = window.APP_CONFIG.GENRES;
-      return { code: 200, data: GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key })) };
+      return { code: 200, data: REAL_CATEGORIES.map(c => ({ categoryid: c.categoryid, name: c.name })) };
     },
 
     movieDetail: async function (movieid) {
@@ -362,13 +380,11 @@
       const m = ALL_MOVIES.find(x => x.movieid === Number(movieid));
       if (!m) throw { status: 404, detail: '电影不存在或已删除' };
       const data = normalize(m);
-      // 与真实接口一致：附带分类关联数组
-      const GENRES = window.APP_CONFIG.GENRES;
-      const categories = genreOf(m).map(g => {
-        const idx = GENRES.findIndex(x => x.key === g);
-        return idx >= 0 ? { categoryid: idx + 1, name: g } : null;
+      // 与真实接口一致：附带分类关联数组（按真实分类表 ID）
+      data.categories = realGenresOf(m).map(function (name) {
+        const id = catIdByName(name);
+        return id ? { categoryid: id, name: name } : null;
       }).filter(Boolean);
-      data.categories = categories;
       return { code: 200, data };
     },
 

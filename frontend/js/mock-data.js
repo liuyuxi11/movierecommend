@@ -993,5 +993,7 @@ window.MOCK_GENRE_CN = {
  "Family": "合家欢",
  "Foreign": "外语片",
  "History": "历史",
- "TV Movie": "电视电影"
+ "TV Movie": "电视电影",
+ "Neo-noir": "新黑色电影",
+ "Indie": "独立电影"
 };

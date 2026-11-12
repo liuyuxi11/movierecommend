@@ -72,14 +72,15 @@ const assert = (cond, msg) => {
   assert(r.data.items.length === 5 && r.data.total >= 60, '电影分页查询');
   const first = r.data.items[0];
   assert(first.averating >= r.data.items[4].averating, '评分降序排序');
-  r = await MockSvc.movies({ category_id: 15, page: 1, page_size: 10 }); // Sci-Fi
-  assert(r.data.items.every(m => UI.parseGenres(m.typelist).includes('Sci-Fi')), '分类筛选（科幻）');
+  r = await MockSvc.movies({ category_id: 12, page: 1, page_size: 10 }); // Science Fiction（真实库 id=12）
+  assert(r.data.items.every(m => UI.parseGenres(m.typelist).includes('Sci-Fi')), '分类筛选（科幻 id=12）');
   r = await MockSvc.movies({ q: 'shawshank' });
   assert(r.data.items.some(m => /shawshank/i.test(m.moviename)), '关键词搜索');
 
-  // 分类接口
+  // 分类接口（镜像真实库 22 类）
   const cats = await Api.categories();
-  assert(cats.data.length === 18 && cats.data[0].categoryid === 1, '分类列表 18 项');
+  assert(cats.data.length === 22 && cats.data[0].categoryid === 1, '分类列表 22 项（真实库镜像）');
+  assert(cats.data.some(c => c.categoryid === 12 && c.name === 'Science Fiction'), 'Science Fiction 分类 id=12');
 
   // 注册 / 登录
   try { await MockSvc.register({ username: 'test_u1', password: 'Abc12345', confirm_password: 'Abc12345', email: 't1@example.com', phone: '13100000001' }); }

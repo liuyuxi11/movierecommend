@@ -33,7 +33,7 @@
       this.route();
     },
 
-    /* 加载分类列表：真实接口 GET /api/movies/categories，失败时用 18 类兜底 */
+    /* 加载分类列表：真实接口 GET /api/movies/categories，失败时用真实库 22 类兜底 */
     async loadCategories() {
       try {
         const res = await Api.categories();
@@ -43,7 +43,9 @@
           return;
         }
       } catch (e) { /* 兜底 */ }
-      this.state.categories = CFG.GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key }));
+      const real = window.REAL_CATEGORIES || [];
+      this.state.categories = (real.length ? real : CFG.GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key })))
+        .map(c => ({ categoryid: Number(c.categoryid), name: c.name }));
     },
 
     updateEngineBadge() {
@@ -767,11 +769,17 @@
       const en = (movie.name_zh && movie.moviename && movie.moviename !== movie.name_zh) ? movie.moviename : '';
       const year = UI.fmtYear(movie.releasetime);
       const genres = UI.parseGenres(movie.typelist);
-      /* 真实接口返回 categories: [{categoryid, name}]；老数据回退 typelist */
+      /* 真实接口返回 categories: [{categoryid, name}]；老数据回退 typelist（按真实分类表映射） */
+      const GENRE_TO_REAL = window.GENRE_TO_REAL || {};
+      const REAL_CATEGORIES = window.REAL_CATEGORIES || [];
       const movieCategories = (movie.categories && movie.categories.length)
         ? movie.categories
-        : genres.filter(g => CFG.GENRES.some(x => x.key === g))
-          .map(g => ({ categoryid: CFG.GENRES.findIndex(x => x.key === g) + 1, name: g }));
+        : genres.map(g => GENRE_TO_REAL[g] || null)
+          .filter(Boolean)
+          .map(name => {
+            const c = REAL_CATEGORIES.find(x => x.name === name);
+            return c ? { categoryid: c.categoryid, name } : null;
+          }).filter(Boolean);
       const rating = Number(movie.averating);
       const myRatings = await this.getMyRatingsMap();
       const myScore = myRatings[Number(movie.movieid)] || 0;
