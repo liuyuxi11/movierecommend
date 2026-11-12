@@ -56,7 +56,10 @@
         el.textContent = '在线模式 · 已连接 API';
         if (modeEl) { modeEl.textContent = '在线模式'; modeEl.className = 'mode-chip online'; }
         if (apiEl) apiEl.textContent = CFG.API_BASE_URL;
-        Api.health().then(r => { el.textContent = r && r.message ? r.message : '后端服务正常'; })
+        Api.health().then(r => {
+          const msg = (r && r.data && r.data.message) || (r && r.message) || '后端服务正常';
+          el.textContent = msg;
+        })
           .catch(() => { el.textContent = 'API 已连接（健康检查失败）'; });
       } else {
         el.textContent = '演示模式 · 内置 Mock 数据';
