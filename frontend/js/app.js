@@ -13,8 +13,9 @@
   const App = {
     state: {
       view: null,
-      homeCat: null,        // 首页分类筛选 {key, id, cn}
-      filterCat: null,      // 头部筛选器
+      homeCat: null,        // 首页分类筛选 {id, name}
+      filterCat: null,      // 头部筛选器 {id, name}
+      categories: [],       // 分类列表 [{categoryid, name}]（真实接口或演示 18 类）
       search: { q: '', page: 1, sort: 'rating', order: 'desc' },
       heroTimer: null,
       cleanup: []           // 视图清理函数
@@ -25,10 +26,24 @@
       await Net.probe();
       this.updateEngineBadge();
       this.bindGlobalEvents();
+      await this.loadCategories();
       await this.restoreSession();
       this.renderTopbar();
       window.addEventListener('hashchange', () => this.route());
       this.route();
+    },
+
+    /* 加载分类列表：真实接口 GET /api/movies/categories，失败时用 18 类兜底 */
+    async loadCategories() {
+      try {
+        const res = await Api.categories();
+        const data = (res && res.data) || [];
+        if (data.length) {
+          this.state.categories = data.map(c => ({ categoryid: Number(c.categoryid), name: c.name }));
+          return;
+        }
+      } catch (e) { /* 兜底 */ }
+      this.state.categories = CFG.GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key }));
     },
 
     updateEngineBadge() {
@@ -55,9 +70,7 @@
         Net.setCurrentUser(res.data);
         Net.setCurrentUserId(res.data.userid);
       } catch (e) {
-        Net.setToken(null);
-        Net.setCurrentUser(null);
-        Net.setCurrentUserId(0);
+        Net.clearSession();
       }
     },
 
@@ -156,8 +169,8 @@
         this.state.search.q = params.get('q') || '';
         if (params.get('cat')) {
           const id = Number(params.get('cat'));
-          const g = CFG.GENRES[id - 1];
-          this.state.filterCat = g ? { key: g.key, id, cn: g.cn } : null;
+          const cat = (this.state.categories || []).find(c => Number(c.categoryid) === id);
+          this.state.filterCat = cat ? { id, name: cat.name, cn: cat.name } : { id, name: '分类 ' + id, cn: '分类 ' + id };
         }
         this.state.search.page = 1;
         render('search', () => this.loadSearch());
@@ -246,10 +259,10 @@
       });
     },
 
-    logout() {
-      Net.setToken(null);
-      Net.setCurrentUser(null);
-      Net.setCurrentUserId(0);
+    async logout() {
+      /* 通知后端退出（使已签发令牌失效），失败也照常清除本地会话 */
+      try { await Api.logout(); } catch (e) { /* 网络或令牌问题不阻塞退出 */ }
+      Net.clearSession();
       UI.toast('已安全退出登录');
       this.renderTopbar();
       const v = this.state.view;
@@ -258,17 +271,22 @@
     },
 
     /* ================= 筛选弹层 ================= */
+    catLabel(cat) {
+      const cn = (window.MOCK_GENRE_CN || {})[cat.name];
+      return cn || cat.name;
+    },
     renderFilterPop() {
       const grid = document.getElementById('filterPopGrid');
       let html = `<button type="button" class="filter-chip ${!this.state.filterCat ? 'active' : ''}" data-id="0">全部</button>`;
-      CFG.GENRES.forEach((g, i) => {
-        const active = this.state.filterCat && this.state.filterCat.id === i + 1;
-        html += `<button type="button" class="filter-chip ${active ? 'active' : ''}" data-id="${i + 1}">${UI.esc(g.cn)}</button>`;
+      (this.state.categories || []).forEach(c => {
+        const active = this.state.filterCat && this.state.filterCat.id === Number(c.categoryid);
+        html += `<button type="button" class="filter-chip ${active ? 'active' : ''}" data-id="${c.categoryid}" title="${UI.esc(c.name)}">${UI.esc(this.catLabel(c))}</button>`;
       });
       grid.innerHTML = html;
       grid.querySelectorAll('.filter-chip').forEach(b => b.addEventListener('click', () => {
         const id = Number(b.dataset.id);
-        this.state.filterCat = id > 0 ? { key: CFG.GENRES[id - 1].key, id, cn: CFG.GENRES[id - 1].cn } : null;
+        const cat = id > 0 ? (this.state.categories || []).find(c => Number(c.categoryid) === id) : null;
+        this.state.filterCat = cat ? { id: Number(cat.categoryid), name: cat.name } : null;
         this.renderFilterPop();
       }));
     },
@@ -423,14 +441,15 @@
     renderCatPills() {
       const mount = document.getElementById('pillsMount');
       let html = `<button type="button" class="cat-pill ${!this.state.homeCat ? 'active' : ''}" data-id="0"><span>全部</span><em>All</em></button>`;
-      CFG.GENRES.forEach((g, i) => {
-        const active = this.state.homeCat && this.state.homeCat.id === i + 1;
-        html += `<button type="button" class="cat-pill ${active ? 'active' : ''}" data-id="${i + 1}"><span>${UI.esc(g.cn)}</span><em>${UI.esc(g.en)}</em></button>`;
+      (this.state.categories || []).forEach(c => {
+        const active = this.state.homeCat && this.state.homeCat.id === Number(c.categoryid);
+        html += `<button type="button" class="cat-pill ${active ? 'active' : ''}" data-id="${c.categoryid}"><span>${UI.esc(this.catLabel(c))}</span><em>${UI.esc(c.name)}</em></button>`;
       });
       mount.innerHTML = html;
       mount.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
         const id = Number(b.dataset.id);
-        this.state.homeCat = id > 0 ? { key: CFG.GENRES[id - 1].key, id, cn: CFG.GENRES[id - 1].cn } : null;
+        const cat = id > 0 ? (this.state.categories || []).find(c => Number(c.categoryid) === id) : null;
+        this.state.homeCat = cat ? { id: Number(cat.categoryid), name: cat.name } : null;
         this.renderCatPills();
         this.loadRailMain();
       }));
@@ -444,8 +463,8 @@
       const year = UI.fmtYear(m.releasetime);
       const rating = Number(m.averating);
       const isNew = year && Number(year) >= new Date().getFullYear() - 1;
-      const isHot = (m.numrating || 0) >= 20000;
-      const isTop = !isNaN(rating) && rating >= 8.6;
+      const isHot = (m.numrating || 0) >= 300;
+      const isTop = !isNaN(rating) && rating >= 4.4;
       const badge = isTop ? '<span class="poster-badge gold">高分</span>'
         : isNew ? '<span class="poster-badge green">新片</span>'
         : isHot ? '<span class="poster-badge hot">热播</span>' : '';
@@ -525,7 +544,7 @@
     async loadRailMain() {
       const mount = document.getElementById('railMainMount');
       const cat = this.state.homeCat;
-      mount.innerHTML = this.railHtml(cat ? cat.cn + ' · 精选影片' : '电影推荐', '', 'railMain');
+      mount.innerHTML = this.railHtml(cat ? this.catLabel(cat) + ' · 精选影片' : '电影推荐', '', 'railMain');
       const track = document.getElementById('railMain');
       track.innerHTML = UI.skeletonCards(CFG.RAIL_PER_PAGE);
       try {
@@ -668,7 +687,7 @@
       view.innerHTML = `
         <section class="page">
           <div class="page-head">
-            <h1 class="page-title">搜索<span class="page-title-sub">${q ? '“' + UI.esc(q) + '”' : '全部影片'}${cat ? ' · ' + UI.esc(cat.cn) : ''}</span></h1>
+            <h1 class="page-title">搜索<span class="page-title-sub">${q ? '“' + UI.esc(q) + '”' : '全部影片'}${cat ? ' · ' + UI.esc(this.catLabel(cat)) : ''}</span></h1>
             <div class="sort-tabs" id="sortTabs">
               <button type="button" class="sort-tab ${this.state.search.sort === 'rating' ? 'active' : ''}" data-sort="rating">评分最高</button>
               <button type="button" class="sort-tab ${this.state.search.sort === 'popularity' ? 'active' : ''}" data-sort="popularity">热度最高</button>
@@ -748,11 +767,16 @@
       const en = (movie.name_zh && movie.moviename && movie.moviename !== movie.name_zh) ? movie.moviename : '';
       const year = UI.fmtYear(movie.releasetime);
       const genres = UI.parseGenres(movie.typelist);
+      /* 真实接口返回 categories: [{categoryid, name}]；老数据回退 typelist */
+      const movieCategories = (movie.categories && movie.categories.length)
+        ? movie.categories
+        : genres.filter(g => CFG.GENRES.some(x => x.key === g))
+          .map(g => ({ categoryid: CFG.GENRES.findIndex(x => x.key === g) + 1, name: g }));
       const rating = Number(movie.averating);
       const myRatings = await this.getMyRatingsMap();
       const myScore = myRatings[Number(movie.movieid)] || 0;
       const dist = window.MockSvc.ratingDistribution(movie);
-      const better = Math.min(97, Math.round(45 + (isNaN(rating) ? 7 : rating) * 5));
+      const better = Math.min(97, Math.round(45 + (isNaN(rating) ? 3.5 : rating) * 10));
 
       view.innerHTML = `
         <section class="page detail-page">
@@ -781,12 +805,7 @@
               <dl class="meta-list">
                 <div class="meta-row"><dt>导演</dt><dd>${UI.esc(movie.director || '未知')}</dd></div>
                 <div class="meta-row"><dt>主演</dt><dd>${UI.esc(movie.leadactors || '未知')}</dd></div>
-                <div class="meta-row"><dt>类型</dt><dd>${genres.length ? genres.map(g => {
-                  const gi = CFG.GENRES.findIndex(x => x.key === g);
-                  return gi >= 0
-                    ? `<a class="genre-link" href="#/search?cat=${gi + 1}">${UI.esc(UI.genreCn(g))}</a>`
-                    : `<a class="genre-link" href="#/search?q=${encodeURIComponent(g)}">${UI.esc(UI.genreCn(g))}</a>`;
-                }).join(' ') : '未知'}</dd></div>
+                <div class="meta-row"><dt>类型</dt><dd>${movieCategories.length ? movieCategories.map(c => `<a class="genre-link" href="#/search?cat=${c.categoryid}">${UI.esc(this.catLabel(c))}</a>`).join(' ') : '未知'}</dd></div>
                 <div class="meta-row"><dt>上映日期</dt><dd>${UI.esc(UI.fmtDate(movie.releasetime) || '未知')}</dd></div>
                 <div class="meta-row"><dt>电影编号</dt><dd>ID: ${UI.esc(movie.movieid)}</dd></div>
               </dl>
@@ -831,8 +850,23 @@
             <div class="rate-bar-right">
               <button type="button" class="btn-primary" id="submitScoreBtn">提交评分</button>
             </div>
+            <div class="score-chips" id="scoreChips"></div>
           </div>
           <div id="rateResult" class="rate-result" hidden></div>
+
+          <section class="detail-section">
+            <h2 class="section-title">《${UI.esc(zh)}》的剧情简介 · · · · · ·</h2>
+            <div class="plot-text">${UI.esc(movie.description || '暂无简介')}</div>
+          </section>
+
+          <section class="detail-section">
+            <h2 class="section-title">热门影评</h2>
+            <div class="comment-box">
+              <input type="text" id="commentInput" placeholder="写短评…（发布后对所有人可见，1-500 字）" maxlength="500">
+              <button type="button" class="btn-primary sm" id="commentSend">写短评</button>
+            </div>
+            <div id="detailReviews"></div>
+          </section>
 
           <div class="quick-strip-wrap">
             <div class="rail-head">
@@ -841,11 +875,6 @@
             </div>
             <div class="rail-track quick-track" id="quickTrack"></div>
           </div>
-
-          <section class="detail-section">
-            <h2 class="section-title">《${UI.esc(zh)}》的剧情简介 · · · · · ·</h2>
-            <div class="plot-text">${UI.esc(movie.description || '暂无简介')}</div>
-          </section>
 
           <section class="detail-section">
             <div class="rail-head">
@@ -857,15 +886,6 @@
               </div>
             </div>
             <div class="rail-track" id="simRail"></div>
-          </section>
-
-          <section class="detail-section">
-            <h2 class="section-title">热门影评</h2>
-            <div class="comment-box">
-              <input type="text" id="commentInput" placeholder="写短评…（演示功能，仅保存在本地）" maxlength="500">
-              <button type="button" class="btn-primary sm" id="commentSend">写短评</button>
-            </div>
-            <div id="detailReviews"></div>
           </section>
         </section>`;
 
@@ -922,13 +942,34 @@
       }));
 
       /* 详情页内嵌星级打分 */
-      let myScoreSel = myScore;
-      const starWidget = this.buildStarsInput(myScore, value => {
+      let myScoreSel = (myScore >= 1 && myScore <= 5) ? myScore : null;
+      const starWidget = this.buildStarsInput(myScoreSel, value => {
         myScoreSel = value;
         document.getElementById('rateWord').textContent = value === null ? '' : value + '分 · ' + this.scoreWord(value);
+        this.paintScoreChips(value);
       }, true);
       document.getElementById('detailStars').appendChild(starWidget);
       document.getElementById('rateWord').textContent = myScoreSel === null ? '' : myScoreSel + '分 · ' + this.scoreWord(myScoreSel);
+
+      /* 一键档位：1~5 星全部可选（后端评分制为 1-5 分） */
+      const chipsMount = document.getElementById('scoreChips');
+      chipsMount.innerHTML = [1, 2, 3, 4, 5].map(v => {
+        const word = this.scoreWord(v);
+        return `<button type="button" class="score-chip" data-v="${v}" title="${v} 分 · ${word}">${'★'.repeat(v)}<i>${v}分 ${word}</i></button>`;
+      }).join('');
+      this.paintScoreChips = (v) => {
+        chipsMount.querySelectorAll('.score-chip').forEach(c => {
+          c.classList.toggle('active', Number(c.dataset.v) === v);
+        });
+      };
+      chipsMount.querySelectorAll('.score-chip').forEach(c => c.addEventListener('click', () => {
+        const v = Number(c.dataset.v);
+        myScoreSel = myScoreSel === v ? null : v;
+        starWidget.setValue(myScoreSel);
+        document.getElementById('rateWord').textContent = myScoreSel === null ? '' : myScoreSel + '分 · ' + this.scoreWord(myScoreSel);
+        this.paintScoreChips(myScoreSel);
+      }));
+      this.paintScoreChips(myScoreSel);
 
       document.getElementById('submitScoreBtn').addEventListener('click', async () => {
         if (!this.requireAuth()) return;
@@ -967,45 +1008,153 @@
       /* 相似影片 */
       await this.loadSimilarRail(Number(movie.movieid));
 
-      /* 影评 */
-      const reviewsBox = document.getElementById('detailReviews');
-      try {
-        const reviews = await Api.reviews(Number(movie.movieid));
-        reviewsBox.innerHTML = reviews.length
-          ? reviews.map(r => this.reviewCard(r, true)).join('')
-          : '<div class="rail-empty">暂无影评</div>';
-        this.bindReviewActions(reviewsBox);
-      } catch (e) {
-        reviewsBox.innerHTML = `<div class="rail-empty">${UI.esc(e.detail || '加载失败')}</div>`;
-      }
+      /* 影评（对接真实评论接口 /api/comments/movies/{id}/comments） */
+      await this.loadDetailComments(Number(movie.movieid));
+    },
 
-      /* 写短评（演示，本地保存） */
-      document.getElementById('commentSend').addEventListener('click', () => {
+    /* ================= 电影评论（真实接口 + 演示仿真） ================= */
+    commentItemHtml(c, currentUserId) {
+      const isMine = currentUserId > 0 && Number(c.userid) === currentUserId;
+      const avatar = c.avatar
+        ? `<img class="ci-avatar-img" src="${UI.esc(c.avatar)}" onerror="UI.posterOnError(this,'${UI.esc(c.username)}')">`
+        : `<span class="ci-avatar-letter">${UI.esc((c.username || '?').slice(0, 1).toUpperCase())}</span>`;
+      return `
+        <article class="comment-item" data-id="${c.commentid}">
+          <div class="ci-avatar">${avatar}</div>
+          <div class="ci-body">
+            <div class="ci-head">
+              <span class="ci-user">${UI.esc(c.username || '影迷')}</span>
+              <span class="ci-time">${UI.esc(UI.fmtTime(c.created_at))}</span>
+              ${c.moderation_status === 'review_pending' ? '<span class="ci-pending">审核中</span>' : ''}
+            </div>
+            <p class="ci-content">${UI.esc(c.content)}</p>
+            <div class="ci-actions">
+              <button type="button" class="ci-btn ${c.liked ? 'liked' : ''}" data-act="like">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="${c.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3Zm0 0 4.5-7.5A2.5 2.5 0 0 1 16 5v4h4.2a1.6 1.6 0 0 1 1.6 1.9l-1.6 9a1.6 1.6 0 0 1-1.6 1.3H7"/></svg>
+                赞 ${UI.fmtNum(c.like_count || 0)}
+              </button>
+              ${isMine ? '<button type="button" class="ci-btn danger" data-act="delete">删除</button>' : ''}
+              ${!isMine ? '<button type="button" class="ci-btn" data-act="report">举报</button>' : ''}
+            </div>
+          </div>
+        </article>`;
+    },
+
+    async loadDetailComments(movieid) {
+      const box = document.getElementById('detailReviews');
+      if (!box) return;
+      box.innerHTML = '<div class="sk-line w80"></div><div class="sk-line w60"></div>'.repeat(2);
+      const me = Net.currentUser();
+      const myId = me ? Number(me.userid) : 0;
+      const self = this;
+
+      const render = async () => {
+        try {
+          const res = await Api.comments(movieid, { page: 1, page_size: 20 });
+          const items = (res.data && res.data.items) || [];
+          box.innerHTML = items.length
+            ? items.map(c => this.commentItemHtml(c, myId)).join('')
+            : '<div class="rail-empty">还没有评论，快来抢沙发～</div>';
+          box.querySelectorAll('.comment-item').forEach(item => {
+            const id = Number(item.dataset.id);
+            item.querySelector('[data-act="like"]').addEventListener('click', async e => {
+              e.stopPropagation();
+              if (!this.requireAuth()) return;
+              try {
+                const r = await Api.toggleCommentLike(id);
+                const liked = r && r.data && r.data.liked;
+                UI.toast(liked ? '已点赞 👍' : '已取消点赞');
+                render();
+              } catch (err) {
+                UI.toast(err.detail || '操作失败', 'warn');
+              }
+            });
+            const delBtn = item.querySelector('[data-act="delete"]');
+            if (delBtn) delBtn.addEventListener('click', async e => {
+              e.stopPropagation();
+              if (!window.confirm('确定删除这条评论吗？')) return;
+              try {
+                await Api.deleteComment(id);
+                UI.toast('评论已删除', 'ok');
+                render();
+              } catch (err) {
+                UI.toast(err.detail || '删除失败', 'warn');
+              }
+            });
+            const repBtn = item.querySelector('[data-act="report"]');
+            if (repBtn) repBtn.addEventListener('click', e => {
+              e.stopPropagation();
+              this.openReportModal(id);
+            });
+          });
+        } catch (e) {
+          box.innerHTML = `<div class="rail-empty">${UI.esc(e.detail || '评论加载失败')}</div>`;
+        }
+      };
+
+      document.getElementById('commentSend').addEventListener('click', async () => {
         const input = document.getElementById('commentInput');
         const v = input.value.trim();
         if (!v) { UI.toast('请先写点内容', 'warn'); return; }
         if (!this.requireAuth()) return;
-        let local = [];
-        try { local = JSON.parse(localStorage.getItem('mrz_mycomments') || '[]'); } catch (e) { local = []; }
-        local.unshift({ movieid: Number(movie.movieid), text: v, at: new Date().toISOString() });
-        localStorage.setItem('mrz_mycomments', JSON.stringify(local));
-        input.value = '';
-        UI.toast('短评已发布（本地演示）', 'ok');
-        const u = Net.currentUser();
-        reviewsBox.insertAdjacentHTML('afterbegin', `
-          <article class="review-card full mine">
-            <div class="review-poster">${UI.posterImg(movie.picture, zh, '')}</div>
-            <div class="review-body">
-              <h4 class="review-title">我的短评</h4>
-              <div class="review-meta"><span class="review-user">${UI.esc(u ? u.username : '我')}</span><span>评论《${UI.esc(zh)}》</span></div>
-              <p class="review-content">${UI.esc(v)}</p>
-            </div>
-          </article>`);
+        if (v.length > 500) { UI.toast('评论最多 500 字', 'warn'); return; }
+        try {
+          await Api.postComment(movieid, v);
+          input.value = '';
+          UI.toast('评论发布成功', 'ok');
+          render();
+        } catch (e) {
+          UI.toast(e.detail || '评论发布失败', 'warn');
+        }
+      });
+
+      await render();
+    },
+
+    /* 举报评论弹窗 */
+    openReportModal(commentid) {
+      const reasons = [
+        ['malicious_attack', '恶意攻击'],
+        ['insulting_language', '侮辱性言论'],
+        ['harmful_information', '传播不良信息'],
+        ['excessive_promotion', '过度商业推广'],
+        ['advertisement', '广告'],
+        ['other', '其他']
+      ];
+      this.openGeneric(`
+        <h3 class="g-title">🚩 举报评论</h3>
+        <form id="reportForm" class="g-form">
+          <div class="report-reasons">
+            ${reasons.map((r, i) => `<label class="report-opt"><input type="radio" name="reason" value="${r[0]}" ${i === 0 ? 'checked' : ''}>${r[1]}</label>`).join('')}
+          </div>
+          <label class="g-field" id="reportDetailField" hidden><span>补充说明（选“其他”时必填）</span><input type="text" id="reportDetail" maxlength="500"></label>
+          <div class="g-actions">
+            <button type="button" class="btn-ghost" id="reportCancel">取消</button>
+            <button type="submit" class="btn-primary">提交举报</button>
+          </div>
+        </form>`);
+      document.getElementById('reportCancel').addEventListener('click', () => this.closeGeneric());
+      const form = document.getElementById('reportForm');
+      form.addEventListener('change', () => {
+        const v = form.querySelector('input[name="reason"]:checked').value;
+        document.getElementById('reportDetailField').hidden = v !== 'other';
+      });
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const reason = form.querySelector('input[name="reason"]:checked').value;
+        const detail = document.getElementById('reportDetail').value.trim();
+        try {
+          await Api.reportComment(commentid, { reason_code: reason, reason_detail: reason === 'other' ? detail : null });
+          this.closeGeneric();
+          UI.toast('举报已提交，管理员将尽快处理', 'ok');
+        } catch (err) {
+          UI.toast(err.detail || '举报失败', 'warn');
+        }
       });
     },
 
     scoreWord(v) {
-      return ({ 1: '较差', 2: '还行', 3: '推荐', 4: '很好', 5: '力荐' })[v] || '';
+      return ({ 1: '很差', 2: '较差', 3: '还行', 4: '推荐', 5: '力荐' })[v] || '';
     },
 
     /* null means no rating has been selected. */
@@ -1018,6 +1167,11 @@
           const sv = Number(s.dataset.v);
           s.classList.toggle('on', hover === null ? sv <= (val === null ? -1 : val) : sv <= hover);
         });
+      };
+      /* 供“一键档位”等外部组件直接赋值 */
+      wrap.setValue = (v) => {
+        val = Number.isInteger(v) && v >= 1 && v <= 5 ? v : null;
+        paint(null);
       };
       for (let i = 1; i <= 5; i++) {
         const star = document.createElement('button');
@@ -1073,18 +1227,23 @@
             <div class="quick-card" data-id="${m.movieid}">
               ${UI.posterImg(m.picture, zh, 'quick-poster')}
               <div class="quick-name">${UI.esc(zh)}</div>
-              <div class="quick-stars" data-movie="${m.movieid}">${'<button type="button" class="qs-star" data-v="1">★</button><button type="button" class="qs-star" data-v="2">★</button><button type="button" class="qs-star" data-v="3">★</button><button type="button" class="qs-star" data-v="4">★</button><button type="button" class="qs-star" data-v="5">★</button>'}</div>
+              <div class="quick-score-pills" data-movie="${m.movieid}">
+                ${[1, 2, 3, 4, 5].map(v => `<button type="button" class="qsp" data-v="${v}" title="${v} 分 · ${this.scoreWord(v)}">${v}★</button>`).join('')}
+              </div>
+              <div class="quick-score-word">${sel === null ? '' : sel + '分 · ' + this.scoreWord(sel)}</div>
             </div>`;
         }).join('');
         track.querySelectorAll('.quick-card').forEach(card => {
           const id = Number(card.dataset.id);
-          const stars = card.querySelectorAll('.qs-star');
+          const pills = card.querySelectorAll('.qsp');
+          const wordEl = card.querySelector('.quick-score-word');
           const paint = () => {
             const selected = Object.hasOwn(this.quickSelections, id) ? this.quickSelections[id] : null;
-            stars.forEach(s => s.classList.toggle('on', selected !== null && Number(s.dataset.v) <= selected));
+            pills.forEach(s => s.classList.toggle('active', selected !== null && Number(s.dataset.v) === selected));
+            wordEl.textContent = selected === null ? '' : selected + '分 · ' + this.scoreWord(selected);
           };
           paint();
-          stars.forEach(s => s.addEventListener('click', () => {
+          pills.forEach(s => s.addEventListener('click', () => {
             const v = Number(s.dataset.v);
             if (this.quickSelections[id] === v) delete this.quickSelections[id];
             else this.quickSelections[id] = v;
@@ -1097,7 +1256,7 @@
         });
       };
       renderStrip();
-      UI.bindRailPager(track, document.getElementById('simRail-pager') && null, null, null);
+      UI.bindRailPager(track, null, null, null);
 
       const btn = document.getElementById('batchSubmitBtn');
       this.updateBatchBtn = () => {
@@ -1198,22 +1357,24 @@
               ${UI.posterImg(m.picture, zh, 'rate-card-poster')}
               <div class="rate-card-name">${UI.esc(zh)}</div>
               <div class="rate-card-sub">${UI.esc(UI.fmtYear(m.releasetime) || '')}${m.averating ? ' · 均分 ' + UI.fmtRating(m.averating) : ''}</div>
-              <div class="rate-card-stars">${'<button type="button" class="rc-star" data-v="1">★</button><button type="button" class="rc-star" data-v="2">★</button><button type="button" class="rc-star" data-v="3">★</button><button type="button" class="rc-star" data-v="4">★</button><button type="button" class="rc-star" data-v="5">★</button>'}</div>
+              <div class="rate-card-chips">
+                ${[1, 2, 3, 4, 5].map(v => `<button type="button" class="rc-chip" data-v="${v}" title="${v} 分 · ${self.scoreWord(v)}">${v}★<i>${self.scoreWord(v)}</i></button>`).join('')}
+              </div>
               <div class="rate-card-word"></div>
             </div>`;
         }).join('');
 
-        const words = { 1: '较差', 2: '还行', 3: '推荐', 4: '很好', 5: '力荐' };
+        const words = this.scoreWord.bind(this);
         grid.querySelectorAll('.rate-card').forEach(card => {
           const id = Number(card.dataset.id);
-          const stars = card.querySelectorAll('.rc-star');
+          const chips = card.querySelectorAll('.rc-chip');
           const wordEl = card.querySelector('.rate-card-word');
           const paint = () => {
             const v = Object.hasOwn(self.rateSelections, id) ? self.rateSelections[id] : null;
-            stars.forEach(s => s.classList.toggle('on', v !== null && Number(s.dataset.v) <= v));
-            wordEl.textContent = v === null ? '' : v + '分 · ' + words[v];
+            chips.forEach(s => s.classList.toggle('active', v !== null && Number(s.dataset.v) === v));
+            wordEl.textContent = v === null ? '' : v + '分 · ' + words(v);
           };
-          stars.forEach(s => s.addEventListener('click', () => {
+          chips.forEach(s => s.addEventListener('click', () => {
             const v = Number(s.dataset.v);
             if (self.rateSelections[id] === v) delete self.rateSelections[id];
             else self.rateSelections[id] = v;
@@ -1533,20 +1694,45 @@
         bar.style.width = '100%';
         mark(4, true);
         await genPromise;
-        await new Promise(r => setTimeout(r, 700));
+
+        if (!genError) {
+          /* 提交成功（202）：轮询任务状态直到完成（动效保持显示） */
+          if (genResult && genResult.task_id) {
+            const step3 = layer.querySelector('.spark-step[data-step="3"] span:last-child');
+            if (step3) step3.textContent = '正在从 50,581 部影片中匹配 Top 10 推荐结果…（任务 ' + genResult.task_id.slice(0, 8) + '）';
+            let state = null;
+            const deadline = Date.now() + 90000;
+            while (Date.now() < deadline) {
+              try {
+                const t = await Api.recommendTask(genResult.task_id);
+                state = t.state;
+                if (state === 'SUCCESS' || state === 'FAILURE') break;
+              } catch (e) {
+                /* 任务状态过期(404)时直接查结果 */
+                break;
+              }
+              await new Promise(r => setTimeout(r, 1500));
+            }
+            if (state === 'FAILURE') {
+              UI.toast('推荐任务执行失败，请稍后重试', 'warn');
+            }
+          }
+        }
+
+        await new Promise(r => setTimeout(r, 500));
         layer.hidden = true;
         if (genError) {
           UI.toast(genError.detail || '推荐生成失败', 'warn');
           if (genError.status === 503) {
-            UI.toast('推荐生成任务服务尚未配置（后端 Celery/Spark 未启用）', 'warn');
+            UI.toast('推荐生成任务服务尚未配置（请启动 Redis 和 Celery Worker）', 'warn');
           }
         } else {
-          UI.toast('推荐任务已提交，正在等待结果', 'ok');
+          UI.toast('Spark ALS 计算完成，正在为您呈现专属片单 ✨', 'ok');
         }
         if (bodyEl) {
           try {
             let bag = await Api.recommendResult();
-            if (Net.mode === 'real' && genResult && genResult.request_id) {
+            if (genResult && genResult.request_id) {
               bag = await this.waitForRecommendationRequest(genResult.request_id, bag);
               if (bag && bag.request_id === genResult.request_id) {
                 UI.toast('推荐列表已更新，正在为您呈现结果', 'ok');
@@ -1825,6 +2011,7 @@
       document.querySelectorAll('.auth-tab').forEach(t => t.addEventListener('click', () => this.switchAuthTab(t.dataset.authtab)));
       document.getElementById('goRegister').addEventListener('click', () => this.switchAuthTab('register'));
       document.getElementById('goLogin').addEventListener('click', () => this.switchAuthTab('login'));
+      document.getElementById('goForgot').addEventListener('click', () => this.openForgotPassword());
 
       // 密码显隐
       document.querySelectorAll('[data-eye]').forEach(b => b.addEventListener('click', () => {
@@ -1847,9 +2034,12 @@
         try {
           const res = await Api.login(account, pwd);
           Net.setToken(res.access_token);
+          /* 后端签发 refresh_token：access 900 秒过期后前端自动续期 */
+          if (res.refresh_token) Net.setRefreshToken(res.refresh_token);
           Net.setCurrentUserId(res.userid);
           const meRes = await Api.me();
           Net.setCurrentUser(meRes.data);
+          document.getElementById('loginPwd').value = '';
           document.getElementById('authModal').hidden = true;
           this.renderTopbar();
           UI.toast('欢迎回来，' + meRes.data.username + '！', 'ok');
@@ -1983,9 +2173,67 @@
         try {
           await Api.changePassword(oldP, newP);
           this.closeGeneric();
-          UI.toast('密码修改成功', 'ok');
+          /* 后端修改密码会使已签发令牌全部失效，需重新登录 */
+          Net.clearSession();
+          this.renderTopbar();
+          this.openAuth('login');
+          UI.toast('密码修改成功，请使用新密码重新登录', 'ok');
+          const v = this.state.view;
+          if (v && v.needsAuth) location.hash = '#/';
         } catch (err) {
           UI.toast(err.detail || '修改失败', 'warn');
+        }
+      });
+    },
+
+    /* ================= 忘记密码 ================= */
+    openForgotPassword() {
+      this.openGeneric(`
+        <h3 class="g-title">🔑 找回密码</h3>
+        <form id="forgotForm" class="g-form">
+          <label class="g-field"><span>注册邮箱</span><input type="email" id="fgEmail" placeholder="用于接收验证码"></label>
+          <div class="g-actions">
+            <button type="button" class="btn-ghost" id="fgCancel">取消</button>
+            <button type="button" class="btn-primary" id="fgSendBtn">发送验证码</button>
+          </div>
+          <label class="g-field" id="fgCodeField" hidden><span>邮箱验证码（6 位数字）</span><input type="text" id="fgCode" maxlength="6" placeholder="123456"></label>
+          <label class="g-field" id="fgPwdField" hidden><span>新密码</span><input type="password" id="fgNewPwd" placeholder="8 位以上，含字母和数字"></label>
+          <div class="g-actions" id="fgConfirmRow" hidden>
+            <button type="button" class="btn-ghost" id="fgCancel2">取消</button>
+            <button type="submit" class="btn-primary">确认重置密码</button>
+          </div>
+        </form>`);
+      document.getElementById('fgCancel').addEventListener('click', () => this.closeGeneric());
+      document.getElementById('fgCancel2').addEventListener('click', () => this.closeGeneric());
+      const form = document.getElementById('forgotForm');
+      document.getElementById('fgSendBtn').addEventListener('click', async () => {
+        const email = document.getElementById('fgEmail').value.trim();
+        if (!email) { UI.toast('请输入注册邮箱', 'warn'); return; }
+        try {
+          const r = await Api.forgotPasswordRequest(email);
+          UI.toast(r.msg || '验证码已发送，请查收邮箱', 'ok');
+          document.getElementById('fgCodeField').hidden = false;
+          document.getElementById('fgPwdField').hidden = false;
+          document.getElementById('fgConfirmRow').hidden = false;
+        } catch (err) {
+          UI.toast(err.detail || '发送失败', 'warn');
+        }
+      });
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const email = document.getElementById('fgEmail').value.trim();
+        const code = document.getElementById('fgCode').value.trim();
+        const newPwd = document.getElementById('fgNewPwd').value;
+        if (!code) { UI.toast('请输入验证码', 'warn'); return; }
+        if (!newPwd) { UI.toast('请输入新密码', 'warn'); return; }
+        try {
+          await Api.forgotPasswordConfirm(email, code, newPwd);
+          this.closeGeneric();
+          this.switchAuthTab('login');
+          document.getElementById('loginAccount').value = email;
+          UI.toast('密码重置成功，请使用新密码登录', 'ok');
+        } catch (err) {
+          UI.toast(err.detail || '重置失败', 'warn');
         }
       });
     },
@@ -2010,6 +2258,9 @@
       const zh = m ? (m.name_zh || m.moviename) : '电影 #' + movieid;
       pop.innerHTML = `
         <div class="qr-head">快速评分 · ${UI.esc(zh)}</div>
+        <div class="qr-chips">
+          ${[1, 2, 3, 4, 5].map(v => `<button type="button" class="qr-chip" data-v="${v}" title="${v} 分 · ${this.scoreWord(v)}">${v}★<i>${this.scoreWord(v)}</i></button>`).join('')}
+        </div>
         <div class="qr-stars"></div>
         <div class="qr-word"></div>
         <div class="qr-actions">
@@ -2021,8 +2272,16 @@
       const widget = this.buildStarsInput(null, v => {
         sel = v;
         pop.querySelector('.qr-word').textContent = v ? v + '分 · ' + this.scoreWord(v) : '';
+        pop.querySelectorAll('.qr-chip').forEach(c => c.classList.toggle('active', Number(c.dataset.v) === v));
       }, true);
       pop.querySelector('.qr-stars').appendChild(widget);
+      pop.querySelectorAll('.qr-chip').forEach(c => c.addEventListener('click', () => {
+        const v = Number(c.dataset.v);
+        sel = sel === v ? null : v;
+        widget.setValue(sel);
+        pop.querySelector('.qr-word').textContent = sel ? sel + '分 · ' + this.scoreWord(sel) : '';
+        pop.querySelectorAll('.qr-chip').forEach(x => x.classList.toggle('active', Number(x.dataset.v) === sel));
+      }));
       const rect = anchorBtn.getBoundingClientRect();
       pop.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
       pop.style.top = (rect.bottom + 8) + 'px';

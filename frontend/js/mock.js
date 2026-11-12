@@ -241,9 +241,51 @@
       if (!u || u.password !== password) throw { status: 401, detail: '账号或密码错误' };
       return {
         code: 200, msg: '登录成功',
-        access_token: 'mock.jwt.' + btoa(JSON.stringify({ sub: u.userid, exp: Date.now() + 7200000 })),
-        token_type: 'bearer', userid: u.userid
+        access_token: 'mock.access.' + btoa(JSON.stringify({ sub: u.userid, exp: Date.now() + 900000 })),
+        refresh_token: 'mock.refresh.' + btoa(JSON.stringify({ sub: u.userid, jti: uid() })),
+        token_type: 'bearer',
+        expires_in: 900,
+        refresh_expires_in: 604800,
+        userid: u.userid
       };
+    },
+
+    refresh: async function () {
+      await delay();
+      const u = users.find(x => x.userid === window.Net.currentUserId());
+      if (!u) throw { status: 401, detail: '无效或过期的刷新凭证' };
+      return {
+        code: 200,
+        data: {
+          access_token: 'mock.access.' + btoa(JSON.stringify({ sub: u.userid, exp: Date.now() + 900000 })),
+          refresh_token: 'mock.refresh.' + btoa(JSON.stringify({ sub: u.userid, jti: uid() })),
+          token_type: 'bearer',
+          expires_in: 900,
+          refresh_expires_in: 604800
+        }
+      };
+    },
+
+    logout: async function () {
+      await delay();
+      return { code: 200, msg: '已退出，当前及此前签发的令牌已失效；请在客户端清除本地令牌' };
+    },
+
+    forgotPasswordRequest: async function (email) {
+      await delay();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email || ''))) throw { status: 422, detail: '请输入有效的邮箱地址' };
+      // 演示模式：验证码固定为 123456，并提示用户
+      return { code: 200, msg: '验证码已发送，请查收邮箱（演示模式验证码：123456）' };
+    },
+
+    forgotPasswordConfirm: async function (email, code, newPassword) {
+      await delay();
+      const u = findUserByAccount(email);
+      if (!u) throw { status: 400, detail: '验证码无效或已过期' };
+      if (String(code) !== '123456') throw { status: 400, detail: '验证码错误' };
+      if (!/^(?=.*[A-Za-z])(?=.*\d).{8,255}$/.test(newPassword)) throw { status: 422, detail: '新密码至少 8 位，且必须包含英文字母和数字' };
+      u.password = newPassword; saveUsers();
+      return { code: 200, msg: '密码重置成功' };
     },
 
     me: async function () {
@@ -308,11 +350,26 @@
       return { code: 200, data: queryMovies(params || {}) };
     },
 
+    /* 分类列表：18 大标准分类，categoryid 为 1-18 */
+    categories: async function () {
+      await delay();
+      const GENRES = window.APP_CONFIG.GENRES;
+      return { code: 200, data: GENRES.map((g, i) => ({ categoryid: i + 1, name: g.key })) };
+    },
+
     movieDetail: async function (movieid) {
       await delay();
       const m = ALL_MOVIES.find(x => x.movieid === Number(movieid));
       if (!m) throw { status: 404, detail: '电影不存在或已删除' };
-      return { code: 200, data: normalize(m) };
+      const data = normalize(m);
+      // 与真实接口一致：附带分类关联数组
+      const GENRES = window.APP_CONFIG.GENRES;
+      const categories = genreOf(m).map(g => {
+        const idx = GENRES.findIndex(x => x.key === g);
+        return idx >= 0 ? { categoryid: idx + 1, name: g } : null;
+      }).filter(Boolean);
+      data.categories = categories;
+      return { code: 200, data };
     },
 
     /* 评分 */
@@ -335,7 +392,12 @@
         if (idx >= 0) all[idx] = rec; else all.push(rec);
       });
       LS.set('ratings', all);
-      return { code: 200, msg: '评分提交成功', count: movieids.length };
+      const refreshRequestId = 'mock-refresh-' + Date.now().toString(36);
+      return {
+        code: 200, msg: '评分提交成功', count: movieids.length,
+        recommendation_refresh_queued: true,
+        recommendation_request_id: refreshRequestId
+      };
     },
 
     myRatings: async function (params) {
@@ -409,10 +471,18 @@
     generateRecommend: async function () {
       await delay();
       const userId = window.Net.currentUserId();
-      if (ratingsOf(userId).length === 0) throw { status: 400, detail: '您还没有任何评分记录，请先参与打分' };
-      // 演示模式：直接完成 ALS 计算（前端以加载动效模拟耗时）
+      // 演示模式：直接完成“ALS 计算”（前端以加载动效模拟耗时），无评分时按热门兜底
       generateRecs(userId);
-      return { code: 202, msg: '推荐任务已生成', request_id: 'req-' + userId + '-' + Date.now().toString(36) };
+      const taskId = 'mock-task-' + Date.now().toString(36);
+      LS.set('last_task', { userid: userId, task_id: taskId, state: 'SUCCESS' });
+      return { code: 202, request_id: taskId, task_id: taskId, msg: '推荐任务已提交' };
+    },
+
+    recommendTask: async function (taskId) {
+      await delay();
+      const t = LS.get('last_task', null);
+      if (!t || t.task_id !== taskId) throw { status: 404, detail: '任务不存在或状态已过期' };
+      return { code: 200, task_id: taskId, state: 'SUCCESS' };
     },
 
     recommendResult: async function () {
@@ -435,12 +505,132 @@
       return { code: 200, msg: '事件已记录' };
     },
 
+    /* ---------- 评论（仿真 /api/comments 系列） ---------- */
+    _seedComments() {
+      let comments = LS.get('comments', null);
+      if (comments) return comments;
+      comments = REVIEWS.map((r, i) => ({
+        commentid: i + 1,
+        movieid: r.movieid,
+        userid: 1 + (i % 2), // 演示用户
+        content: r.title + '。' + r.content,
+        moderation_status: 'published',
+        created_at: new Date(Date.now() - (i + 2) * 86400000).toISOString(),
+        deleted: false
+      }));
+      LS.set('comments', comments);
+      return comments;
+    },
+    _likes() {
+      let likes = LS.get('comment_likes', null);
+      if (likes) return likes;
+      // 仅给内置种子评论分配点赞，不包含用户后续发布的评论
+      const seeded = this._seedComments().filter(c => c.commentid <= REVIEWS.length);
+      likes = seeded.map(c => ({ userid: c.userid, commentid: c.commentid, active: true }));
+      LS.set('comment_likes', likes);
+      return likes;
+    },
+
+    comments: async function (movieid, params) {
+      await delay();
+      const page = Math.max(1, Number((params && params.page) || 1));
+      const pageSize = Math.min(100, Math.max(1, Number((params && params.page_size) || 20)));
+      const all = this._seedComments().filter(c => !c.deleted && c.movieid === Number(movieid))
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      const likes = this._likes();
+      const me = window.Net.currentUserId();
+      const items = all.map(c => {
+        const u = users.find(x => x.userid === c.userid);
+        const m = ALL_MOVIES.find(x => x.movieid === c.movieid);
+        return {
+          commentid: c.commentid, movieid: c.movieid,
+          moviename: m ? m.moviename : null,
+          userid: c.userid, username: u ? u.username : '影迷',
+          avatar: u ? u.avatar : null, content: c.content,
+          moderation_status: c.moderation_status, created_at: c.created_at,
+          like_count: likes.filter(l => l.commentid === c.commentid && l.active).length,
+          liked: likes.some(l => l.commentid === c.commentid && l.userid === me && l.active)
+        };
+      });
+      const total = items.length;
+      return { code: 200, data: { items: items.slice((page - 1) * pageSize, page * pageSize), total, page, page_size: pageSize } };
+    },
+
+    postComment: async function (movieid, content) {
+      await delay();
+      const v = String(content || '').trim();
+      if (!v || v.length > 500) throw { status: 422, detail: '评论内容需为 1-500 字符' };
+      if (!ALL_MOVIES.find(x => x.movieid === Number(movieid))) throw { status: 404, detail: '电影不存在或已删除' };
+      const comments = this._seedComments();
+      const nc = {
+        commentid: Math.max(0, ...comments.map(c => c.commentid)) + 1,
+        movieid: Number(movieid),
+        userid: window.Net.currentUserId(),
+        content: v,
+        moderation_status: 'published',
+        created_at: new Date().toISOString(),
+        deleted: false
+      };
+      comments.push(nc);
+      LS.set('comments', comments);
+      return { code: 201, data: { commentid: nc.commentid, movieid: nc.movieid, content: nc.content } };
+    },
+
+    deleteComment: async function (commentid) {
+      await delay();
+      const comments = this._seedComments();
+      const c = comments.find(x => x.commentid === Number(commentid) && !x.deleted);
+      if (!c) throw { status: 404, detail: '评论不存在或已删除' };
+      if (c.userid !== window.Net.currentUserId()) throw { status: 403, detail: '只能删除自己的评论' };
+      c.deleted = true;
+      LS.set('comments', comments);
+      return { code: 200, msg: '评论已删除' };
+    },
+
+    toggleCommentLike: async function (commentid) {
+      await delay();
+      const comments = this._seedComments();
+      const c = comments.find(x => x.commentid === Number(commentid) && !x.deleted);
+      if (!c) throw { status: 404, detail: '评论不存在或已删除' };
+      const likes = this._likes();
+      const me = window.Net.currentUserId();
+      const like = likes.find(l => l.commentid === c.commentid && l.userid === me);
+      let active;
+      if (!like) { likes.push({ userid: me, commentid: c.commentid, active: true }); active = true; }
+      else { like.active = !like.active; active = like.active; }
+      LS.set('comment_likes', likes);
+      return { code: 200, msg: '点赞状态已更新', data: { liked: active } };
+    },
+
+    reportComment: async function (commentid, payload) {
+      await delay();
+      const comments = this._seedComments();
+      const c = comments.find(x => x.commentid === Number(commentid) && !x.deleted);
+      if (!c) throw { status: 404, detail: '评论不存在或已删除' };
+      const codes = ['malicious_attack', 'insulting_language', 'harmful_information', 'excessive_promotion', 'advertisement', 'other'];
+      if (codes.indexOf(payload.reason_code) < 0) throw { status: 422, detail: '举报原因不合法' };
+      if (payload.reason_code === 'other' && !String(payload.reason_detail || '').trim()) throw { status: 422, detail: '选择 other 时必须填写 reason_detail' };
+      const reports = LS.get('comment_reports', []);
+      if (reports.some(r => r.commentid === c.commentid && r.userid === window.Net.currentUserId())) {
+        throw { status: 409, detail: '同一用户不能重复举报同一评论' };
+      }
+      reports.push({ reportid: reports.length + 1, commentid: c.commentid, userid: window.Net.currentUserId(), status: 'pending' });
+      LS.set('comment_reports', reports);
+      if (c.moderation_status === 'published') {
+        c.moderation_status = 'review_pending';
+        LS.set('comments', comments);
+      }
+      return { code: 201, data: { reportid: reports.length, status: 'pending' } };
+    },
+
     /* 评分分布（仿真） */
     ratingDistribution: function (movie) {
-      const avg = (movie.averating || 7) / 2; // 5 星制均值
+      const avg = movie && movie.averating != null && !isNaN(Number(movie.averating))
+        ? Math.min(5, Math.max(1, Number(movie.averating)))
+        : 3.5; // 1-5 星制均值
       const n = movie.numrating || 500;
       // 围绕均值构造近似正态的 5 星分布
-      const weights = [1, 2, 3, 4, 5].map(s => Math.exp(-Math.pow(s - avg, 2) / 1.1));
+      const weights = [1, 2, 3, 4, 5].map(s => Math.exp(-Math.pow(s - avg, 2) / 0.9));
       const sum = weights.reduce((a, b) => a + b, 0);
       return weights.map((w, i) => ({ star: 5 - i, pct: Math.round((w / sum) * 1000) / 10 }));
     },

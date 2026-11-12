@@ -9,7 +9,7 @@ window.MOCK_MOVIES = [
   "director": "Tian Xiao Peng",
   "leadactors": "Zhang Lei,Lin Zijie,Tong Zirong,Wu Wenlun,Liu Jiurong,Wu Di,Liu Beichen,Zhao Qianjing,Zhou Shuai",
   "picture": "http://image.tmdb.org/t/p/w185/lTaRCichc1Ogg63ZMbf6bVxVypk.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 11,
   "description": "The all-powerful Monkey King once roamed freely between Heaven and Earth, but after angering the Gods, he was imprisoned within an ice cage deep within the mountains. 500 years later, monsters attack a small village and a child flees to the mountains. Unknowingly, the child releases the Monkey King from his curse. With the help and encouragement from this special child, Monkey King saves the village from the evil monsters.",
   "typelist": "Fantasy,Animation,Comedy"
@@ -23,7 +23,7 @@ window.MOCK_MOVIES = [
   "director": "Frank Darabont",
   "leadactors": "Tim Robbins,Morgan Freeman,Bob Gunton,Clancy Brown,Mark Rolston,James Whitmore,Gil Bellows,William Sadler,Jeffrey DeMunn,Larry Brandenburg,Neil Giuntoli,Brian Libby,David Proval,Joseph Ragno,Jude Ciccolella,Paul McCrane,Renee Blaine,Scott Mann,John Horton,Gordon Greene,Alfonso Freeman,V.J. Foster,Frank Medrano,Mack Miles,Gary Lee Davis,Ned Bellamy,Brian Delate,Don McManus,Dorothy Silver,Dion Anderson,Robert Haley,Bill Bolender,John R. Woodward,Rohn Thomas,Brian Brophy,Ken Magee,James Babson,Fred Culbertson,Alonzo F. Jones,Actor Sergio Kato,Neil Summers,Philip Ettington",
   "picture": "http://image.tmdb.org/t/p/w185/9O7gLzmreU0nGkIB6K3BsJbzvNv.jpg",
-  "averating": 8.8,
+  "averating": 4.4,
   "numrating": 95100,
   "description": "Framed in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison, where he puts his accounting skills to work for an amoral warden. During his long stretch in prison, Dufresne comes to be admired by the other inmates -- including an older prisoner named Red -- for his integrity and unquenchable sense of hope.",
   "typelist": "Drama,Crime"
@@ -37,7 +37,7 @@ window.MOCK_MOVIES = [
   "director": "Chen Kaige",
   "leadactors": "Leslie Cheung,Gong Li,Zhang Fengyi,Jiang Wenli,Ge You,Lu Qi,Ying Da,Yi Di,Zhi Yitong,Li Chun,Lei Han,Fei Yang,Ma Ming-Wei,Zhao Hai-Long,Yin Zhi,Li Dan,Yang Yong-Chao",
   "picture": "http://image.tmdb.org/t/p/w185/4ZvFaUuyquam4v0LG1mDNuZngY8.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 3987,
   "description": "Abandoned by his prostitute mother in 1920, Douzi was raised by a theater troupe. There he meets Shitou and over the following years the two develop an act entitled, 'Farewell My Concubine,' that brings them fame and fortune. When Shitou marries Juxian, Doutzi becomes jealous, the beginnings of the acting duo's explosive breakup and tragic fall take root.",
   "typelist": "Drama"
@@ -51,7 +51,7 @@ window.MOCK_MOVIES = [
   "director": "Christopher Nolan",
   "leadactors": "Leonardo DiCaprio,Joseph Gordon-Levitt,Ellen Page,Tom Hardy,Ken Watanabe,Cillian Murphy,Marion Cotillard,Michael Caine,Dileep Rao,Tom Berenger,Pete Postlethwaite,Lukas Haas,Talulah Riley,Tohoru Masamune,Taylor Geare,Claire Geare,Johnathan Geare,Yuji Okumoto,Earl Cameron,Ryan Hayward,Miranda Nolan,Russ Fega,Tim Kelleher,Coralie Dedykere,Silvie Laguna,Virgile Bramly,Nicolas Clerc,Jean-Michel Dagory,Marc Raducci",
   "picture": "http://image.tmdb.org/t/p/w185/qmDpIHrmpJINaRKAfWQfftjCdyi.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 38966,
   "description": "Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: 'inception', the implantation of another person's idea into a target's subconscious.",
   "typelist": "Action,Thriller,Science Fiction,Mystery,Adventure"
@@ -65,7 +65,7 @@ window.MOCK_MOVIES = [
   "director": "Christopher Nolan",
   "leadactors": "Matthew McConaughey,Jessica Chastain,Anne Hathaway,Michael Caine,Casey Affleck,Mackenzie Foy,Timothée Chalamet,Bill Irwin,Matt Damon,Ellen Burstyn,John Lithgow,Wes Bentley,Topher Grace,David Oyelowo,David Gyasi,William Devane,Josh Stewart,Collette Wolfe,Leah Cairns,Russ Fega,Lena Georgas,Jeff Hephner,Elyes Gabel,Brooke Smith,Liam Dickinson,Francis X. McCarthy,Andrew Borba,Flora Nolan,William Patrick Brown,Cici Leah Campbell,Kristian Van der Heyden,Mark Casimir Dyniewicz,Joseph Oliveira,Ryan Irving,Alexander Michael Helisek,Benjamin Hardy",
   "picture": "http://image.tmdb.org/t/p/w185/nBNZadXqJSdt05SHLqgT0HuC5Gm.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 21299,
   "description": "Interstellar chronicles the adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel and conquer the vast distances involved in an interstellar voyage.",
   "typelist": "Adventure,Drama,Science Fiction"
@@ -79,7 +79,7 @@ window.MOCK_MOVIES = [
   "director": "Roberto Benigni",
   "leadactors": "Roberto Benigni,Nicoletta Braschi,Giorgio Cantarini,Giustino Durano,Amerigo Fontani,Sergio Bini Bustric,Lidia Alfonsi,Horst Buchholz,Pietro De Silva,Marisa Paredes,Giuliana Lojodice,Francesco Guzzo,Adelaide Alaïs,Verena Buratti,Hannes Hellmann,Wolfgang Hillinger,Antonio Prester,Gina Rovere,Laura Susanne Ruedeberg,Richard Sammel,Andrea Tidona,Dirk K. van den Berg,Omero Antonutti",
   "picture": "http://image.tmdb.org/t/p/w185/f7DImXDebOs148U4uPjI61iDvaK.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 26286,
   "description": "A touching story of an Italian book seller of Jewish ancestry who lives in his own little fairy tale. His creative and happy life would come to an abrupt halt when his entire family is deported to a concentration camp during World War II. While locked up he tries to convince his son that the whole thing is just a game.",
   "typelist": "Comedy,Drama"
@@ -93,7 +93,7 @@ window.MOCK_MOVIES = [
   "director": "Peter Jackson",
   "leadactors": "Elijah Wood,Ian McKellen,Viggo Mortensen,Sean Astin,Orlando Bloom,John Rhys-Davies,Sean Bean,Cate Blanchett,Hugo Weaving,Liv Tyler,Christopher Lee,Billy Boyd,Dominic Monaghan,Andy Serkis,Ian Holm,Craig Parker,Lawrence Makoare,Sala Baker,Sarah McLeod,Marton Csokas,Alan Howard,Noel Appleby,Megan Edwards,Michael Elsworth,Mark Ferguson,Brent McIntyre",
   "picture": "http://image.tmdb.org/t/p/w185/bxVxZb5O9OxCO0oRUNdCnpy9NST.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 59829,
   "description": "Young hobbit Frodo Baggins, after inheriting a mysterious ring from his uncle Bilbo, must leave his home in order to keep it from falling into the hands of its evil creator. Along the way, a fellowship is formed to protect the ringbearer and make sure that the ring arrives at its final destination: Mt. Doom, the only place where it can be destroyed.",
   "typelist": "Adventure,Fantasy,Action"
@@ -107,7 +107,7 @@ window.MOCK_MOVIES = [
   "director": "Peter Jackson",
   "leadactors": "Ian McKellen,Martin Freeman,Richard Armitage,Andy Serkis,Cate Blanchett,Christopher Lee,Sylvester McCoy,Ian Holm,Elijah Wood,Hugo Weaving,Lee Pace,Conan Stevens,Bret McKenzie,Aidan Turner,James Nesbitt,Graham McTavish,Barry Humphries,Ken Stott,Jeffrey Thomas,Mark Hadlow,John Callen,William Kircher,John Bell,Benedict Cumberbatch,Dean O'Gorman,Manu Bennett,Jed Brophy,Adam Brown,Stephen Hunter,Tim McLachlan,Terry Notary,Billy Connolly,Peter Hambleton",
   "picture": "http://image.tmdb.org/t/p/w185/ysX7vDmSh5O19vFjAi56WL7l4nk.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 10071,
   "description": "Bilbo Baggins, a hobbit enjoying his quiet life, is swept into an epic quest by Gandalf the Grey and thirteen dwarves who seek to reclaim their mountain home from Smaug, the dragon.",
   "typelist": "Adventure,Fantasy,Action"
@@ -121,7 +121,7 @@ window.MOCK_MOVIES = [
   "director": "Luc Besson",
   "leadactors": "Jean Reno,Natalie Portman,Gary Oldman,Danny Aiello,Peter Appel,Michael Badalucco,Ellen Greene,Elizabeth Regen,Carl J. Matusovich,Eric Challier,Willi One Blood,Don Creech,Keith A. Glascoe,Jernard Burks,Matt De Matt,Frank Senger,Stuart Rudin,Lucius Wyatt 'Cherokee',Maïwenn,Luc Bernard,Joseph Malerba,Adam Busch,Jessie Keosian,George Martin,Alex Dezen,Kent Broadhurst,Tommy Hollis,Peter Linari,Arsène Jiroyan,Geoffrey Bateman,Samy Naceri,Michel Montanary,Marc Andréoni,Gilles Kleber,Christophe Gautier,Junior Almeida,David Gregg,Didier Legros,Hervé Husson",
   "picture": "http://image.tmdb.org/t/p/w185/gE8S02QUOhVnAmYu4tcrBlMTujz.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 35677,
   "description": "Leon, the top hit man in New York, has earned a rep as an effective 'cleaner'. But when his next-door neighbors are wiped out by a loose-cannon DEA agent, he becomes the unwilling custodian of 12-year-old Mathilda. Before long, Mathilda's thoughts turn to revenge, and she considers following in Leon's footsteps.",
   "typelist": "Thriller,Crime,Drama"
@@ -135,7 +135,7 @@ window.MOCK_MOVIES = [
   "director": "Hayao Miyazaki",
   "leadactors": "Rumi Hiiragi,Miyu Irino,Mari Natsuki,Bunta Sugawara,Yumi Tamai,Ryunosuke Kamiki,Takashi Naito,Yasuko Sawaguchi,Tatsuya Gashûin,Yo Oizumi,Koba Hayashi,Tsunehiko Kamijô,Takehiko Ono,Akio Nakamura,Ken Yasuda",
   "picture": "http://image.tmdb.org/t/p/w185/dL11DBPcRhWWnJcFXl9A07MrqTI.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 22207,
   "description": "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family.",
   "typelist": "Animation,Family,Fantasy"
@@ -149,7 +149,7 @@ window.MOCK_MOVIES = [
   "director": "Francis Ford Coppola",
   "leadactors": "Marlon Brando,Al Pacino,James Caan,Richard S. Castellano,Robert Duvall,Sterling Hayden,John Marley,Richard Conte,Al Lettieri,Diane Keaton,Abe Vigoda,Talia Shire,Gianni Russo,John Cazale,Rudy Bond,Al Martino,Morgana King,Lenny Montana,John Martino,Salvatore Corsitto,Alex Rocco,Tony Giorgio,Victor Rendina,Simonetta Stefanelli,Saro Urzì,Sofia Coppola,Louis Guss,Gabriele Torrei,Tony King,Richard Bright,Vito Scotti,Tere Livrano,Julie Gregg,Angelo Infanti,Corrado Gaipa,Franco Citti,Max Brandt,Carmine Coppola,Roman Coppola,Don Costello,Robert Dahdah,Gray Frederickson,Ron Gilbert,Joe Lo Grippo,Sonny Grosso,Randy Jurgensen,Tony Lip,Lou Martini Jr.,Raymond Martino,Joseph Medaglia,Rick Petrucelli,Sal Richards,Tom Rosqui,Frank Sivero,Filomena Spagnuolo,Joe Spinell,Nick Vallelonga,Conrad Yama",
   "picture": "http://image.tmdb.org/t/p/w185/rPdtLWNsZmAtoZl9PK7S2wE3qiS.jpg",
-  "averating": 8.6,
+  "averating": 4.3,
   "numrating": 59312,
   "description": "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family. When organized crime family patriarch, Vito Corleone barely survives an attempt on his life, his youngest son, Michael steps in to take care of the would-be killers, launching a campaign of bloody revenge.",
   "typelist": "Drama,Crime"
@@ -163,7 +163,7 @@ window.MOCK_MOVIES = [
   "director": "Peter Weir",
   "leadactors": "Jim Carrey,Laura Linney,Noah Emmerich,Natascha McElhone,Ed Harris,Holland Taylor,Brian Delate,Blair Slater,Heidi Schanz,Ron Taylor,Don Taylor,Ted Raymond,Peter Krause,O-Lan Jones,Krista Lynn Landolfi,Paul Giamatti,Harry Shearer,Jeanette Miller,Philip Glass,Una Damon,Joe Minjares,Philip Baker Hall,John Pleshette,Terry Camilleri,Joel McKinnon Miller",
   "picture": "http://image.tmdb.org/t/p/w185/EelZzudHRvJmjWccWscN1S5vmI.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 34953,
   "description": "Truman Burbank is the star of 'The Truman Show', a 24-hour-a-day 'reality' TV show that broadcasts every aspect of his life -- live and in color -- without his knowledge. His entire life has been an unending soap opera for consumption by the rest of the world. And everyone he knows -- including his wife and his best friend -- is really an actor, paid to be part of his life.",
   "typelist": "Comedy,Drama"
@@ -177,7 +177,7 @@ window.MOCK_MOVIES = [
   "director": "Robert Zemeckis",
   "leadactors": "Tom Hanks,Robin Wright,Gary Sinise,Mykelti Williamson,Sally Field,Michael Conner Humphreys,Hanna Hall,Haley Joel Osment,Siobhan Fallon,Afemo Omilami,Peter Dobson,Sonny Shroyer,George Kelly,Sam Anderson,Margo Moorer,Christopher Jones,Kevin Mangan,Brett Rice,Daniel C. Striepeke,David Brisbin,Kirk Ward,Marlena Smalls,Kitty K. Green,Mark Matheisen,Al Harrington,Jed Gillin,Don Fischer,Matt Wallace,Mike Jolly,Michael Kemmerling,John Voldstad,Daniel J. Gillooly,Michael Burgess,Steven Griffith,Michael McFall,Michael McFall,Byron Minns,Stephen Bridgewater,John William Galt,Isabel Rose,Richard D'Alessandro,Michael Jace,Geoffrey Blake,Vanessa Roth,Dick Cavett,Tiffany Salerno,Tiffany Salerno,Joe Alaskey,Lazarus Jackson,Lazarus Jackson,Nora Dunfee,Hallie D'Amore,Michael Mattison,Charles Boswell,Timothy McNeil,Bob Penny,Greg Brown,Troy Christian,Bryan Hanna,Zach Hanner,Aaron Michael Lacey,Jacqueline Lovell,Brendan Shanahan,William Shipman,Robb Skyler,Mary Ellen Trainor",
   "picture": "http://image.tmdb.org/t/p/w185/yE5d3BUhE8hCnkMUJOo1QDoOGNz.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 95051,
   "description": "A man with a low IQ has accomplished great things in his life and been present during significant historic events - in each case, far exceeding what anyone imagined he could do. Yet, despite all the things he has attained, his one true love eludes him. 'Forrest Gump' is the story of a man who rose above his challenges, and who proved that determination, courage, and love are more important than ability.",
   "typelist": "Comedy,Drama,Romance"
@@ -191,7 +191,7 @@ window.MOCK_MOVIES = [
   "director": "Lana Wachowski,Lilly Wachowski",
   "leadactors": "Keanu Reeves,Laurence Fishburne,Carrie-Anne Moss,Hugo Weaving,Gloria Foster,Joe Pantoliano,Marcus Chong,Paul Goddard,Robert Taylor,Julian Arahanga,Matt Doran,Belinda McClory,Anthony Ray Parker,David Aston,Marc Aden,Ada Nicodemou,Deni Gordon,Rowan Witt,Eleanor Witt,Tamara Brown,Janaya Pender,Adryn White,Natalie Tjen,Bill Young,David O'Connor,Jeremy Ball,Fiona Johnson,Harry Lawrence,Steve Dodd,Luke Quinton,Lawrence Woodward,Michael Butcher,Bernard Ledger,Robert Simper,Chris Pattinson,Nigel Harbach",
   "picture": "http://image.tmdb.org/t/p/w185/gynBNzwyaHKtXqlEKKLioNkjKgN.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 81874,
   "description": "Set in the 22nd century, The Matrix tells the story of a computer hacker who joins a group of underground insurgents fighting the vast and powerful computers who now rule the earth.",
   "typelist": "Action,Science Fiction"
@@ -205,7 +205,7 @@ window.MOCK_MOVIES = [
   "director": "Quentin Tarantino",
   "leadactors": "John Travolta,Samuel L. Jackson,Uma Thurman,Bruce Willis,Ving Rhames,Harvey Keitel,Eric Stoltz,Tim Roth,Amanda Plummer,Maria de Medeiros,Quentin Tarantino,Christopher Walken,Rosanna Arquette,Peter Greene,Duane Whitaker,Angela Jones,Phil LaMarr,Steve Buscemi,Bronagh Gallagher,Laura Lovelace,Frank Whaley,Burr Steers,Paul Calderon,Jerome Patrick Hoban,Michael Gilden,Gary Shorelle,Susan Griffiths,Eric Clark,Joseph Pilato,Brad Blumenthal,Lorelei Leslie,Emil Sitka,Brenda Hillhouse,Chandler Lindauer,Sy Sher,Robert Ruth,Rich Turner,Don Blakely,Carl Allen,Karen Maruyama,Kathy Griffin,Venessia Valentino,Linda Kaye,Stephen Hibbert,Alexis Arquette,Julia Sweeney,Lawrence Bender,Cie Allman,Rene Beard,Lori Pizzo,Glendon Rich,Devan Richardson,Ani Sava,Philip Ettington",
   "picture": "http://image.tmdb.org/t/p/w185/dM2w364MScsjFf8pfMbaWUcWrR.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 90553,
   "description": "A burger-loving hit man, his philosophical partner, a drug-addled gangster's moll and a washed-up boxer converge in this sprawling, comedic crime caper. Their adventures unfurl in three stories that ingeniously trip back and forth in time.",
   "typelist": "Thriller,Crime"
@@ -219,7 +219,7 @@ window.MOCK_MOVIES = [
   "director": "Alan Mak,Andrew Lau",
   "leadactors": "Andy Lau,Tony Leung Chiu-Wai,Anthony Wong,Eric Tsang,Kelly Chen,Sammi Cheng,Edison Chen,Shawn Yue,Elva Hsiao,Chapman To,Dion Lam,Gordon Lam Ka-Tung,Wan Chi-Keung,Berg Ng Ting-Yip,Tony Ho Wah-Chiu",
   "picture": "http://image.tmdb.org/t/p/w185/g4LGFGLGjVXkWGYCePbTidw5LKV.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 2522,
   "description": "Chan Wing Yan, a young police officer, has been sent undercover as a mole in the local mafia. Lau Kin Ming, a young mafia member, infiltrates the police force. Years later, their older counterparts, Chen Wing Yan and Inspector Lau Kin Ming, respectively, race against time to expose the mole within their midst.",
   "typelist": "Drama,Action,Thriller,Crime,Mystery"
@@ -233,7 +233,7 @@ window.MOCK_MOVIES = [
   "director": "Mark Osborne,John Stevenson",
   "leadactors": "Jack Black,Dustin Hoffman,Angelina Jolie,Jackie Chan,Lucy Liu,David Cross,Randall Duk Kim,James Hong,Dan Fogler,Ian McShane,Seth Rogen,Michael Clarke Duncan,Wayne Knight,Kyle Gass,JR Reed,Laura Kightlinger,Tanya Haden,Stephen Kearin,Mark Osborne,John Stevenson,Jeremy Shipp,Melissa Cobb,Kent Osborne,Emily Burns,Stephanie Harvey,Riley Osborne",
   "picture": "http://image.tmdb.org/t/p/w185/2Paj1nufT0jeSY0G4u3RC31HIGT.jpg",
-  "averating": 7.2,
+  "averating": 3.6,
   "numrating": 10887,
   "description": "When the Valley of Peace is threatened, lazy Po the panda discovers his destiny as the 'chosen one' and trains to become a kung fu hero, but transforming the unsleek slacker into a brave warrior won't be easy. It's up to Master Shifu and the Furious Five -- Tigress, Crane, Mantis, Viper and Monkey -- to give it a try.",
   "typelist": "Adventure,Animation,Family,Comedy"
@@ -247,7 +247,7 @@ window.MOCK_MOVIES = [
   "director": "Andrew Stanton",
   "leadactors": "Ben Burtt,Elissa Knight,Jeff Garlin,Fred Willard,MacInTalk,John Ratzenberger,Kathy Najimy,Sigourney Weaver,Teddy Newton,Bob Bergen,John Cygan,Pete Docter,Paul Eiding,Donald Fullilove,Teresa Ganzel,Jess Harnell,Mickie McGowan,Laraine Newman,Lori Alan,Jeff Pidgeon,Jan Rabson,Lori Richardson,Andrew Stanton,Jim Ward,Colette Whitaker,Kim Kopf,Angus MacLane,Niki McElroy,Garrett Palmer,Kai Steel Smith",
   "picture": "http://image.tmdb.org/t/p/w185/9cJETuLMc6R0bTWRA5i7ctY9bxk.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 26693,
   "description": "WALL·E is the last robot left on an Earth that has been overrun with garbage and all humans have fled to outer space. For 700 years he has continued to try and clean up the mess, but has developed some rather interesting human-like qualities. When a ship arrives with a sleek new type of robot, WALL·E thinks he's finally found a friend and stows away on the ship when it leaves.",
   "typelist": "Animation,Family"
@@ -261,7 +261,7 @@ window.MOCK_MOVIES = [
   "director": "Byron Howard,Rich Moore",
   "leadactors": "Ginnifer Goodwin,Jason Bateman,Shakira,Idris Elba,Octavia Spencer,J.K. Simmons,Alan Tudyk,Jenny Slate,Bonnie Hunt,Don Lake,Tom Lister Jr.,Tommy Chong,Kristen Bell,Katie Lowes,Josh Dallas,John DiMaggio,Nate Torrence,Maurice LaMarche,Kath Soucie,Mark Smith,Rich Moore,Byron Howard,Jared Bush,Della Saba,Phil Johnston,Gita Reddy,Jesse Corti,Leah Latham,Peter Mansbridge,Josie Trinidad,John Lavelle,Evelyn Wilson Bresee,Hewitt Bush,Jill Cordes,Madeleine Curry,Terri Douglas,Melissa Goodwin Shepherd,Zach King,Dave Kohut,Raymond S. Persi,Fuschia!",
   "picture": "http://image.tmdb.org/t/p/w185/sM33SANp9z6rXW8Itn7NnG1GOEs.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 7153,
   "description": "Determined to prove herself, Officer Judy Hopps, the first bunny on Zootopia's police force, jumps at the chance to crack her first case - even if it means partnering with scam-artist fox Nick Wilde to solve the mystery.",
   "typelist": "Animation,Adventure,Family,Comedy"
@@ -275,7 +275,7 @@ window.MOCK_MOVIES = [
   "director": "Nitesh Tiwari",
   "leadactors": "Aamir Khan,Sakshi Tanwar,Sanya Malhotra,Aparshakti Khurana,Vivan Bhatena,Girish Kulkarni,Zaira Wasim,Suhani Bhatnagar,Fatima Sana Shaikh",
   "picture": "http://image.tmdb.org/t/p/w185/5PDT64gtbmH10gK5AYR7LZh5PQk.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 132,
   "description": "Dangal is an extraordinary true story based on the life of Mahavir Singh and his two daughters, Geeta and Babita Phogat. The film traces the inspirational journey of a father who trains his daughters to become world class wrestlers.",
   "typelist": "Drama"
@@ -289,7 +289,7 @@ window.MOCK_MOVIES = [
   "director": "Jiang Wen",
   "leadactors": "Jiang Wen,Chow Yun-fat,Ge You,Carina Lau,Liao Fan,Chen Kun,Jiang Wu,Feng Xiaogang,Hu Jun,Shao Bing",
   "picture": "http://image.tmdb.org/t/p/w185/sAzdi8RAynDCukwHVEsSNCqhilH.jpg",
-  "averating": 7.0,
+  "averating": 3.5,
   "numrating": 65,
   "description": "Set in China during the Warlords Period of the1920s, notorious bandit chief Zhang descends upon a remote provincial town posing as its new mayor, an identity that he had hijacked from Old Tang, himself a small-time imposter. Hell-bent on making a fast buck, Zhang soon meets his match in the tyrannical local gentry Huang as a deadly battle of wit and brutality ensues.",
   "typelist": "Action,Comedy,Documentary"
@@ -303,7 +303,7 @@ window.MOCK_MOVIES = [
   "director": "Derek Kwok,Stephen Chow",
   "leadactors": "Wen Zhang,Shu Qi,Huang Bo,Show Luo,Lee Sheung-Ching,Chen Bing-Qiang,Cheng Si-Han,Xing Yu,Lu Zheng-Yu,Chiu Chi-Ling,Yang Di,Chrissie Chau,Ge Hang-Yu,Steven Fung Min-Hang,Yeung Lun,Zhang Chao-Li,Tina Tang",
   "picture": "http://image.tmdb.org/t/p/w185/6iOuLajBtI8BryU4NYElbgZHgLt.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 94,
   "description": "In a world plagued by demons who cause great human suffering, young demon hunter Xuan Zang risks his all to conquer a water demon, a pig demon and the demon of all demons, Sun Wukong.",
   "typelist": "Action,Fantasy,Adventure,Comedy"
@@ -317,7 +317,7 @@ window.MOCK_MOVIES = [
   "director": "Jonathan Demme",
   "leadactors": "Jodie Foster,Anthony Hopkins,Scott Glenn,Ted Levine,Anthony Heald,Brooke Smith,Diane Baker,Kasi Lemmons,Frankie Faison,Tracey Walter,Charles Napier,Danny Darst,Alex Coleman,Dan Butler,Paul Lazar,Ron Vawter,Roger Corman,Lawrence A. Bonney,Lawrence T. Wrentz,Don Brockett,Frank Seals Jr.,Stuart Rudin,Masha Skorobogatov,Jeffrie Lane,Leib Lensky,George 'Red' Schwartz,Jim Roche,James B. Howard,Bill Miller,Chuck Aber,Gene Borkan,Pat McNamara,Kenneth Utt,Darla,Adelle Lutz,Obba Babatundé,George Michael,Jim Dratfield,Stanton-Miranda,Rebecca Saxon,Cynthia Ettinger,Brent Hinkley,Steve Wyatt,David Early,Andre B. Blake,Bill Dalzell,Chris Isaak,Daniel von Bargen,Tommy Lafitte,Josh Broder,Buzz Kilman,Harry Northup,Lauren Roselli,Maria Skorobogatov,Lamont Arnold,John Hall,Ted Monte,George A. Romero,John W. Iwanonkiw,Philip Ettington",
   "picture": "http://image.tmdb.org/t/p/w185/qjAyTj2BSth1EQ89vNfo0JYVPFN.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 86393,
   "description": "FBI trainee, Clarice Starling ventures into a maximum-security asylum to pick the diseased brain of Hannibal Lecter, a psychiatrist turned homicidal cannibal. Starling needs clues to help her capture a serial killer. But her Faustian relationship with Lecter soon leads to his escape, and now two deranged killers are on the loose.",
   "typelist": "Crime,Drama,Thriller"
@@ -331,7 +331,7 @@ window.MOCK_MOVIES = [
   "director": "Ridley Scott",
   "leadactors": "Russell Crowe,Joaquin Phoenix,Connie Nielsen,Oliver Reed,Richard Harris,Derek Jacobi,Djimon Hounsou,David Schofield,John Shrapnel,Tomas Arana,Ralf Moeller,Tommy Flanagan,Spencer Treat Clark,David Hemmings,Sven-Ole Thorsen,Giannina Facio,Alun Raglan,Giorgio Cantarini,David Bailie,Omid Djalili,Nicholas McGaughey,Tony Curran,Mark Lewis,John Quinn,Al Hunter Ashton,Allan Corduner,Michael Mellinger,Said Amel,Adam Levy,Gilly Gilchrist,Malcolm Ellul,Ray Mangion,James Fiddy,João Costa Menezes,Mike Mitchell,Norman Campbell Rees,Steve Saunders,Brian Smyj",
   "picture": "http://image.tmdb.org/t/p/w185/6WBIzCgmDCYrqh64yDREGeDk9d3.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 47401,
   "description": "In the year 180, the death of emperor Marcus Aurelius throws the Roman Empire into chaos.  Maximus is one of the Roman army's most capable and trusted generals and a key advisor to the emperor.  As Marcus' devious son Commodus ascends to the throne, Maximus is set to be executed.  He escapes, but is captured by slave traders.  Renamed Spaniard and forced to become a gladiator, Maximus must battle to the death with other men for the amusement of paying audiences.",
   "typelist": "Action,Drama,Adventure"
@@ -345,7 +345,7 @@ window.MOCK_MOVIES = [
   "director": "Frank Darabont",
   "leadactors": "Tom Hanks,Michael Clarke Duncan,David Morse,Bonnie Hunt,James Cromwell,Patricia Clarkson,Michael Jeter,Sam Rockwell,Graham Greene,Doug Hutchison,Barry Pepper,Jeffrey DeMunn,Harry Dean Stanton,Gary Sinise,Dabbs Greer,Eve Brent,William Sadler,Mack Miles,Rai Tasco,Paula Malcomson,Brian Libby,Brent Briscoe,Bill McKinney,Rachel Singer,Scotty Leavenworth,Bill Gratton,Dee Croxton,Rebecca Klingler,Gary Imhoff,Van Epperson,Phil Hawn,Ted Hollis,Robert Malone",
   "picture": "http://image.tmdb.org/t/p/w185/3yJUlOtVa09CYJocwBU8eAryja0.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 32085,
   "description": "A supernatural tale set on death row in a Southern prison, where gentle giant John Coffey possesses the mysterious power to heal people's ailments. When the cellblock's head guard, Paul Edgecomb, recognizes Coffey's miraculous gift, he tries desperately to help stave off the condemned man's execution.",
   "typelist": "Fantasy,Drama,Crime"
@@ -359,7 +359,7 @@ window.MOCK_MOVIES = [
   "director": "Brad Bird",
   "leadactors": "Patton Oswalt,Ian Holm,Lou Romano,Brian Dennehy,Peter Sohn,Peter O'Toole,Brad Garrett,Janeane Garofalo,Will Arnett,Julius Callahan,James Remar,John Ratzenberger,Teddy Newton,Tony Fucile,Jake Steinfeld,Brad Bird,Stéphane Roux,Andrea Boerries,Marco Boerries,Lindsey Collins,Thomas Keller,Brad Lewis,Lori Richardson,Toprak Sergen,Nüvit Candaner,Emrah Özertem",
   "picture": "http://image.tmdb.org/t/p/w185/y8y6Fv0k068OnHBZtu949A1t6pj.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 18806,
   "description": "A rat named Remy dreams of becoming a great French chef despite his family's wishes and the obvious problem of being a rat in a decidedly rodent-phobic profession. When fate places Remy in the sewers of Paris, he finds himself ideally situated beneath a restaurant made famous by his culinary hero, Auguste Gusteau. Despite the apparent dangers of being an unlikely - and certainly unwanted - visitor in the kitchen of a fine French restaurant, Remy's passion for cooking soon sets into motion a hilarious and exciting rat race that turns the culinary world of Paris upside down.",
   "typelist": "Animation,Comedy,Family,Fantasy"
@@ -373,7 +373,7 @@ window.MOCK_MOVIES = [
   "director": "Steven Spielberg",
   "leadactors": "Sam Neill,Laura Dern,Jeff Goldblum,Richard Attenborough,Bob Peck,Martin Ferrero,BD Wong,Joseph Mazzello,Ariana Richards,Samuel L. Jackson,Wayne Knight,Gerald R. Molen,Miguel Sandoval,Cameron Thor,Christopher John Fields,Whit Hertford,Dean Cundey,Jophery C. Brown,Tom Mishler,Greg Burson,Adrian Escober,Richard Kiley,Brad M. Bucklin,Laura Burnett,Gary Rodriguez,Brian Smrz,Robert 'Bobby Z' Zajonc",
   "picture": "http://image.tmdb.org/t/p/w185/c414cDeQ9b6qLPLeKmiJuLDUREJ.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 75701,
   "description": "A wealthy entrepreneur secretly creates a theme park featuring living dinosaurs drawn from prehistoric DNA. Before opening day, he invites a team of experts and his two eager grandchildren to experience the park and help calm anxious investors. However, the park is anything but amusing as the security systems go off-line and the dinosaurs escape.",
   "typelist": "Adventure,Science Fiction"
@@ -387,7 +387,7 @@ window.MOCK_MOVIES = [
   "director": "James Cameron",
   "leadactors": "Arnold Schwarzenegger,Linda Hamilton,Robert Patrick,Edward Furlong,Michael Edwards,Joe Morton,Earl Boen,Jenette Goldstein,Xander Berkeley,S. Epatha Merkerson,Castulo Guerra,Danny Cooksey,Sven-Ole Thorsen,DeVaughn Nixon,Ken Gibbel,Robert Winley,Pete Schrum,Don Lake,Richard Vidan,Jim Palmer,Don Stanton,Dan Stanton,Colin Patrick Lynch,Nikki Cox,Tony Simotes,Abdul Salaam El Razzac,Mike Muscat,Dean Norris,Charles A. Tamburro,Terrence Evans,Denney Pierce,Mark Christopher Lawrence,Van Ling,Gerard G. Williams,Martin DeLuca,Scott Shaw,Joel Kramer,Richard Ruskin,Randy Walker,William Wisher Jr.,Nancy Fish,Dalton Hamilton",
   "picture": "http://image.tmdb.org/t/p/w185/2y4dmgWYRMYXdD1UyJVcn2HSd1D.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 63371,
   "description": "Nearly 10 years have passed since Sarah Connor was targeted for termination by a cyborg from the future. Now her son, John, the future leader of the resistance, is the target for a newer, more deadly terminator. Once again, the resistance has managed to send a protector back to attempt to save John and his mother Sarah.",
   "typelist": "Action,Thriller,Science Fiction"
@@ -401,7 +401,7 @@ window.MOCK_MOVIES = [
   "director": "George Lucas",
   "leadactors": "Liam Neeson,Ewan McGregor,Natalie Portman,Jake Lloyd,Ian McDiarmid,Anthony Daniels,Kenny Baker,Pernilla August,Frank Oz,Oliver Ford Davies,Hugh Quarshie,Ahmed Best,Terence Stamp,Samuel L. Jackson,Ray Park,Peter Serafinowicz,Keira Knightley,Silas Carson,Brian Blessed,Andrew Secombe,Lewis Macleod,Greg Proops,Scott Capurro,Dominic West,Sofia Coppola,Ralph Brown,Steve Speirs,Warwick Davis,Jerome Blake,Alan Ruscoe,Celia Imrie,Benedict Taylor,Clarence Smith,Karol Cristina da Silva,Liz Wilson,Candice Orwell,Bronagh Gallagher,John Fensom,Margaret Towner,Dhruv Chanchani,Oliver Walpole,Katie Lucas,Megan Udall,Hassani Shapi,Gin Clarke,Khan Bonfils,Michelle Taylor,Michaela Cottrell,Dipika O'Neill Joti,Phil Eason,Mark Coulier,Lindsay Duncan,James Taylor,Chris Sanders,Toby Longworth,Marc Silk,Amanda Lucas,Danny Wagner,Sally Hawkins",
   "picture": "http://image.tmdb.org/t/p/w185/n8V09dDc02KsSN6Q4hC2BX6hN8X.jpg",
-  "averating": 6.2,
+  "averating": 3.1,
   "numrating": 36686,
   "description": "Anakin Skywalker, a young slave strong with the Force, is discovered on Tatooine. Meanwhile, the evil Sith have returned, enacting their plot for revenge against the Jedi.",
   "typelist": "Adventure,Action,Science Fiction"
@@ -415,7 +415,7 @@ window.MOCK_MOVIES = [
   "director": "Chris Columbus",
   "leadactors": "Daniel Radcliffe,Rupert Grint,Emma Watson,Richard Harris,Tom Felton,Robbie Coltrane,Alan Rickman,Maggie Smith,Richard Griffiths,Ian Hart,Fiona Shaw,John Hurt,David Bradley,Matthew Lewis,Sean Biggerstaff,Warwick Davis,Harry Melling,James Phelps,Oliver Phelps,John Cleese,Chris Rankin,Alfie Enoch,Devon Murray,Jamie Waylett,Josh Herdman,Zoë Wanamaker,Julie Walters,Bonnie Wright,Luke Youngblood,Verne Troyer,Adrian Rawlins,Geraldine Somerville,Elizabeth Spriggs,Nina Young,Terence Bayler,Leslie Phillips,Simon Fisher-Becker,Derek Deadman,Ray Fearon,Eleanor Columbus,Ben Borowiecki,Danielle Tabor,Leilah Sutherland,Emily Dale,Will Theakston,Scot Fearn,Saunders Triplets,Amy Puglia,David Brett,Leila Hoffman,Hazel Showham,Christina Petrou,Gemma Sandzer,Derek Hough,Julianne Hough,Zoe Sugg,Jimmy Vee,Kieri Kennedy",
   "picture": "http://image.tmdb.org/t/p/w185/dCtFvscYcXQKTNvyyaQr2g2UacJ.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 26411,
   "description": "Harry Potter has lived under the stairs at his aunt and uncle's house his whole life. But on his 11th birthday, he learns he's a powerful wizard -- with a place waiting for him at the Hogwarts School of Witchcraft and Wizardry. As he learns to harness his newfound powers with the help of the school's kindly headmaster, Harry uncovers the truth about his parents' deaths -- and about the villain who's to blame.",
   "typelist": "Adventure,Fantasy,Family"
@@ -429,7 +429,7 @@ window.MOCK_MOVIES = [
   "director": "Roger Michell",
   "leadactors": "Julia Roberts,Hugh Grant,Gina McKee,Tim McInnerny,Rhys Ifans,Emma Chambers,Hugh Bonneville,Richard McCabe,James Dreyfus,Dylan Moran,Roger Frost,Henry Goodman,Julian Rhind-Tutt,Lorelei King,Alec Baldwin,John Shrapnel,Emily Mortimer,Dorian Lough,Sanjeev Bhaskar,Paul Chahidi,Mischa Barton,Clarke Peters,Ann Beach,Samuel West,Tony Armatrading,Simon Callow,Rupert Procter",
   "picture": "http://image.tmdb.org/t/p/w185/f1gMw3PVicfdq9thlvUIjJ5UdvS.jpg",
-  "averating": 7.0,
+  "averating": 3.5,
   "numrating": 16081,
   "description": "William Thacker is a London bookstore owner whose humdrum existence is thrown into romantic turmoil when famous American actress Anna Scott appears in his shop. A chance encounter over spilled orange juice leads to a kiss that blossoms into a full-blown affair. As the average bloke and glamorous movie star draw closer and closer together, they struggle to reconcile their radically different lifestyles in the name of love.",
   "typelist": "Romance,Comedy,Drama"
@@ -443,7 +443,7 @@ window.MOCK_MOVIES = [
   "director": "Garry Marshall",
   "leadactors": "Julia Roberts,Richard Gere,Ralph Bellamy,Jason Alexander,Héctor Elizondo,Larry Miller,Laura San Giacomo,Alex Hyde-White,Elinor Donahue,Amy Yasbeck,Judith Baldwin,Hank Azaria,John David Carson,Michael French,Allan Kent,Stacy Keach, Sr.,Scott Marshall",
   "picture": "http://image.tmdb.org/t/p/w185/fgmdaCMxXClZm2ePteLzCPySB1n.jpg",
-  "averating": 6.8,
+  "averating": 3.4,
   "numrating": 38117,
   "description": "When millionaire wheeler-dealer Edward Lewis enters a business contract with Hollywood hooker Vivian Ward, he loses his heart in the bargain in this charming romantic comedy. After Edward hires Vivian as his date for a week and gives her a Cinderella makeover, she returns the favor by mellowing the hardnosed tycoon's outlook. Can the poor prostitute and the rich capitalist live happily ever after?",
   "typelist": "Romance,Comedy"
@@ -457,7 +457,7 @@ window.MOCK_MOVIES = [
   "director": "Mel Gibson",
   "leadactors": "Mel Gibson,Catherine McCormack,Sophie Marceau,Patrick McGoohan,Angus Macfadyen,Brendan Gleeson,James Robinson,James Cosmo,Sean McGinley,Gerda Stevenson,Mhairi Calvey,Jeanne Marine,Sean Lawlor,Sandy Nelson,Alan Tall,Andrew Weir,Brian Cox,Peter Hanly,Stephen Billington,Tommy Flanagan,Rupert Vansittart,Tam White,Ian Bannen,David O'Hara,Peter Mullan,David Gant,Malcolm Tierney,Martin Murphy,Gerard McSorley,Bernard Horsfall,Richard Leaf,Liam Carney,Ralph Riach,Barry McGovern,John Kavanagh,Alun Armstrong,Julie Austin,Alex Norton,Michael Byrne,William Scott-Masson,Dean Lopata,Donal Gibson,Jimmy Chisholm,John Murtagh,David McKay,Niall O'Brien,Martin Dempsey,Jimmy Keogh,Joe Savino,Mal Whyte,Paul Tucker,Graeme Ford,Greg Jeloudov,Rana Morrison,Jer O'Leary",
   "picture": "http://image.tmdb.org/t/p/w185/2qAgGeYdLjelOEqjW9FYvPHpplC.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 67918,
   "description": "Enraged at the slaughter of Murron, his new bride and childhood love, Scottish warrior William Wallace slays a platoon of the local English lord's soldiers. This leads the village to revolt and, eventually, the entire country to rise up against English rule.",
   "typelist": "Action,Drama,History,War"
@@ -471,7 +471,7 @@ window.MOCK_MOVIES = [
   "director": "Damien Chazelle",
   "leadactors": "Miles Teller,J.K. Simmons,Melissa Benoist,Austin Stowell,Jayson Blair,Kavita Patil,Paul Reiser,Nate Lang,Chris Mulkey,Damon Gupton,Suanne Spoke,Max Kasch,Charlie Ian,Kofi Siriboe,C.J. Vana,Tarik Lowe,Tyler Kimball,Rogelio Douglas Jr.,Adrian Burks,Joseph Bruno,Michael D. Cohen,Jocelyn Ayanna,Keenan Henson,Janet Hoskins,April Grace,Clifton 'Fou Fou' Eddie,Calvin C. Winbush,Marcus Henderson,Tony Baker,Henry G. Sanders,Sam Campisi,Jimmie Kirkpatrick,Keenan Allen,Ayinde Vaughan,Shai Golan,Yancey Wells,Candace Roberge,Krista Kilber,Cici Leah Campbell,Damien Coates,Kyle Julian Graham,Ellee Jane Hounsell,Stephen Hsu,Herman Johansen,Wendee Lee,Dakota Lupo,Jesse Mitchell,Amanda Newman,Joseph Oliveira,Michelle Ruff,Daniel Weidlein",
   "picture": "http://image.tmdb.org/t/p/w185/lIv1QinFqz4dlp5U4lQ6HaiskOZ.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 9937,
   "description": "Under the direction of a ruthless instructor, a talented young drummer begins to pursue perfection at any cost, even his humanity.",
   "typelist": "Drama"
@@ -485,7 +485,7 @@ window.MOCK_MOVIES = [
   "director": "David Lean",
   "leadactors": "Peter O'Toole,Alec Guinness,Anthony Quinn,Jack Hawkins,Omar Sharif,Claude Rains,Anthony Quayle,José Ferrer,Arthur Kennedy,Donald Wolfit,Zia Mohyeddin,I.S. Johar,Gamil Ratib,Michel Ray,John Dimech,Howard Marion-Crawford,Jack Gwillim,Hugh Miller,Robert Rietty,John Barry,Bruce Beeby,John Bennett,Steve Birtles,David Lean,Robert Bolt,Daniel Moynihan,Peter Burton,James Hayter,Barry Warren,J.R.M. Chapman,Basil Dignam,Peter Dukelow,Bryan Pringle,Mohamed El Habachi,Kenneth Fortescue,Harry Fowler,Jack Hedley,Fernando Sancho,Noel Howlett,Patrick Kavanagh,Ian MacNaughton,Clive Morton,Henry Oscar,George Plimpton,Ernie Rice,John Robinson,Norman Rossington,John Ruddock,Stuart Saunders,Cyril Shaps,Roy Stevens,Rafael Hernández,Fred Bennett",
   "picture": "http://image.tmdb.org/t/p/w185/j21UXCOq0EbV8EPTtmPn1CGePfB.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 15236,
   "description": "An epic about British officer T.E. Lawrence's mission to aid the Arab tribes in their revolt against the Ottoman Empire during the First World War. Lawrence becomes a flamboyant, messianic figure in the cause of Arab unity but his psychological instability threatens to undermine his achievements.",
   "typelist": "Adventure,Drama,History,War"
@@ -499,7 +499,7 @@ window.MOCK_MOVIES = [
   "director": "William Wyler",
   "leadactors": "Gregory Peck,Audrey Hepburn,Eddie Albert,Hartley Power,Harcourt Williams,Margaret Rawlings,Tullio Carminati,Paolo Carlini,Claudio Ermelli,Paola Borboni,Alfredo Rizzo,Laura Solari,Gorella Gori,Armando Annuale,Maurizio Arena,Gildo Bocci,Andrea Esterhazy,George Higgins,Richard McNamara,Luigi Moneta,Piero Pastore,Mimmo Poli,Giuliano Raffaelli,Carlo Rizzo,Gianna Segale,Dianora Veiga,Marco Tulli,Tania Weber,Catherine Wyler",
   "picture": "http://image.tmdb.org/t/p/w185/A0JKLHc5rS3uztYl9GDOMwXl1d3.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 7386,
   "description": "Overwhelmed by her suffocating schedule, touring European princess Ann takes off for a night while in Rome. When a sedative she took from her doctor kicks in, however, she falls asleep on a park bench and is found by an American reporter, Joe Bradley, who takes her back to his apartment for safety. At work the next morning, Joe finds out Ann's regal identity and bets his editor he can get exclusive interview with her, but romance soon gets in the way.",
   "typelist": "Comedy,Romance"
@@ -513,7 +513,7 @@ window.MOCK_MOVIES = [
   "director": "Pete Docter",
   "leadactors": "Ed Asner,Christopher Plummer,Jordan Nagai,Bob Peterson,Delroy Lindo,Jerome Ranft,John Ratzenberger,David Kaye,Elie Docter,Jeremy Leary,Mickie McGowan,Danny Mann,Donald Fullilove,Jess Harnell,Josh Cooley,Pete Docter",
   "picture": "http://image.tmdb.org/t/p/w185/nk11pvocdb5zbFhX5oq5YiLPYMo.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 24662,
   "description": "Carl Fredricksen spent his entire life dreaming of exploring the globe and experiencing life to its fullest. But at age 78, life seems to have passed him by, until a twist of fate (and a persistent 8-year old Wilderness Explorer named Russell) gives him a new lease on life.",
   "typelist": "Animation,Comedy,Family,Adventure"
@@ -527,7 +527,7 @@ window.MOCK_MOVIES = [
   "director": "Roger Allers,Rob Minkoff",
   "leadactors": "Jonathan Taylor Thomas,Matthew Broderick,James Earl Jones,Jeremy Irons,Moira Kelly,Niketa Calame,Ernie Sabella,Nathan Lane,Robert Guillaume,Rowan Atkinson,Whoopi Goldberg,Cheech Marin,Jim Cummings,Madge Sinclair,Joseph Williams,Jason Weaver,Sally Dworsky,Laura Williams,Zoe Leader,Frank Welker,Judi M. Durand,Daamen J. Krall,David McCharen,Mary Linda Phillips,Phil Proctor,David J. Randolph,Evan Saucedo,Brian Tochi",
   "picture": "http://image.tmdb.org/t/p/w185/bKPtXn9n4M4s8vvZrbw40mYsefB.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 46539,
   "description": "A young lion cub named Simba can't wait to be king. But his uncle craves the title for himself and will stop at nothing to get it.",
   "typelist": "Family,Animation,Drama"
@@ -541,7 +541,7 @@ window.MOCK_MOVIES = [
   "director": "John Lasseter",
   "leadactors": "Tom Hanks,Tim Allen,Don Rickles,Jim Varney,Wallace Shawn,John Ratzenberger,Annie Potts,John Morris,Erik von Detten,Laurie Metcalf,R. Lee Ermey,Sarah Freeman,Penn Jillette,Sherry Lynn",
   "picture": "http://image.tmdb.org/t/p/w185/rhIRbceoE9lR4veEXuwCC2wARtG.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 67537,
   "description": "Led by Woody, Andy's toys live happily in his room until Andy's birthday brings Buzz Lightyear onto the scene. Afraid of losing his place in Andy's heart, Woody plots against Buzz. But when circumstances separate Buzz and Woody from their owner, the duo eventually learns to put aside their differences.",
   "typelist": "Animation,Comedy,Family"
@@ -555,7 +555,7 @@ window.MOCK_MOVIES = [
   "director": "David Fincher",
   "leadactors": "Brad Pitt,Morgan Freeman,Gwyneth Paltrow,John C. McGinley,Kevin Spacey,R. Lee Ermey,Richard Roundtree,Richard Schiff,Julie Araskog,Mark Boone Junior,John Cassini,Reg E. Cathey,Peter Crombie,Hawthorne James,Michael Massee,Leland Orser,Richard Portnow,Daniel Zacapa,Alfonso Freeman,Harris Savides,Andrew Kevin Walker,Richmond Arquette,Pamala Tyson,Emily Wagner,Shannon Wilcox,George Christy,Endre Hules,William Davidson,Bob Collins,Dominique Jennings,Allan Kolman,Gene Borkan,Mario Di Donato,Harrison White,Bob Stephenson,Michael Reid MacKay,Lennie Loftin,Martin Serene,David Correia,Lexie Bigham,Evan Mirand,Paul Eckstein,Rachel Flanagan,Heidi Schanz,Brian Evers,James Deeth,Charles A. Tamburro,Charles S. Dutton,Arthur Max",
   "picture": "http://image.tmdb.org/t/p/w185/8zw8IL4zEPjkh8Aysdcd0FwGMb0.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 54139,
   "description": "Two homicide detectives are on a desperate hunt for a serial killer whose crimes are based on the 'seven deadly sins' in this dark and haunting film that takes viewers from the tortured remains of one victim to the next. The seasoned Det. Sommerset researches each sin in an effort to get inside the killer's mind, while his novice partner, Mills, scoffs at his efforts to unravel the case.",
   "typelist": "Crime,Mystery,Thriller"
@@ -569,7 +569,7 @@ window.MOCK_MOVIES = [
   "director": "Robert Zemeckis",
   "leadactors": "Michael J. Fox,Christopher Lloyd,Lea Thompson,Crispin Glover,Thomas F. Wilson,Claudia Wells,Marc McClure,Wendie Jo Sperber,George DiCenzo,Frances Lee McCain,James Tolkan,Harry Waters, Jr.,Billy Zane,J.J. Cohen,Casey Siemaszko,Donald Fullilove,Lisa Freeman,Cristen Kauffman,Elsa Raven,Will Hare,Ivy Bethune,Jason Marin,Katherine Britton,Jason Hervey,Maia Brewton,Courtney Gains,Richard L. Duran,Jeff O'Haco,Johnny Green,Jamie Abbott,Norman Alden,Read Morgan,Sachi Parker,Robert Krantz,Gary Riley,Karen Petrasek,George Buck Flower,Tommy Thomas,Granville 'Danny' Young,David Harold Brown,Lloyd L. Tolbert,Paul Hanson,Lee Brownfield,Robert DeLapp,Walter Scott,Charles L. Campbell,Deborah Harmon,Janine King,Huey Lewis,Tom Tangen,Arthur Tovey",
   "picture": "http://image.tmdb.org/t/p/w185/pTpxQB1N0waaSc3OSn0e9oc8kx9.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 56430,
   "description": "Eighties teenager Marty McFly is accidentally sent back in time to 1955, inadvertently disrupting his parents' first meeting and attracting his mother's romantic interest. Marty must repair the damage to history by rekindling his parents' romance and - with the help of his eccentric inventor friend Doc Brown - return to 1985.",
   "typelist": "Adventure,Comedy,Science Fiction,Family"
@@ -583,7 +583,7 @@ window.MOCK_MOVIES = [
   "director": "Ridley Scott",
   "leadactors": "Tom Skerritt,Sigourney Weaver,Veronica Cartwright,Harry Dean Stanton,John Hurt,Ian Holm,Yaphet Kotto,Bolaji Badejo,Helen Horton,Eddie Powell",
   "picture": "http://image.tmdb.org/t/p/w185/2h00HrZs89SL3tXB4nbkiM7BKHs.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 38483,
   "description": "During its return to the earth, commercial spaceship Nostromo intercepts a distress signal from a distant planet. When a three-member team of the crew discovers a chamber containing thousands of eggs on the planet, a creature inside one of the eggs attacks an explorer. The entire crew is unaware of the impending nightmare set to descend upon them when the alien parasite planted inside its unfortunate host is birthed.",
   "typelist": "Horror,Action,Thriller,Science Fiction"
@@ -597,7 +597,7 @@ window.MOCK_MOVIES = [
   "director": "Spike Jonze",
   "leadactors": "Joaquin Phoenix,Scarlett Johansson,Rooney Mara,Amy Adams,Olivia Wilde,Chris Pratt,Portia Doubleday,Sam Jaeger,Katherine Boecher,Kelly Sarah,Spike Jonze,Bill Hader,Kristen Wiig,Brian Cox,Lynn Adrianna,Lisa Renee Pitts,Gabe Gomez,Artt Butler,May Lindstrom,Matt Letscher,David Azar,Guy Lewis,Melanie Seacat,Pramod Kumar,Evelyn Edwards,Steve Zissis,Dane White,Nicole Grother,James Ozasky,Samantha Sarakanti,Luka Jones,Gracie Prewitt,Claudia Choi,Laura Kai Chen,Soko,Wendy Leon,Lil Buck",
   "picture": "http://image.tmdb.org/t/p/w185/fsoTLnUXEUTNuVCBxAJMY0HPPd.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 8955,
   "description": "In the not so distant future, Theodore, a lonely writer purchases a newly developed operating system designed to meet the user's every needs. To Theodore's surprise, a romantic relationship develops between him and his operating system. This unconventional love story blends science fiction and romance in a sweet tale that explores the nature of love and the ways that technology isolates and connects us all.",
   "typelist": "Romance,Science Fiction,Drama"
@@ -611,7 +611,7 @@ window.MOCK_MOVIES = [
   "director": "Gabriele Muccino",
   "leadactors": "Will Smith,Jaden Smith,Thandie Newton,Brian Howe,James Karen,Kurt Fuller,Dan Castellaneta,Joe Nunez,David Fine,Takayo Fischer,Kevin West,George Cheung,Geoff Callan,Scott Klace,Rashida Clendening,Peter Fitzsimmons,Maurice Sherbanee,Zuhair Haddad,Victor Raider-Wexler,Mark Christopher Lawrence,George Maguire,Adam Del Rio,Rueben Grundy,Ming Lo,Stu Klitsner,Esther Scott,Cecil Williams,Amir Talai,Mike Garibaldi,Jason Frazier,David Haines,Bob Greene,Robert Anthony Peters,Cathy Fithian,Keith Stevenson,Karen Kahn,Martin Andris,Yeena Fisher,Phil Austin,Kenny Santiago Marrero,David Pearl,Rick Camp,Brad Carr,Cabran E. Chamberlain,Ben Fritz,Adam Wang,Zachary Culbertson,Brendan Kruse,Austin Scott",
   "picture": "http://image.tmdb.org/t/p/w185/iMNp6gTeDBXbzjKRNYtorxZ76G2.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 8844,
   "description": "A struggling salesman takes custody of his son as he's poised to begin a life-changing professional career.",
   "typelist": "Drama"
@@ -625,7 +625,7 @@ window.MOCK_MOVIES = [
   "director": "Christopher Nolan",
   "leadactors": "Hugh Jackman,Christian Bale,Michael Caine,Scarlett Johansson,Andy Serkis,Samantha Mahurin,David Bowie,Piper Perabo,Rebecca Hall,Daniel Davis,Roger Rees,Ricky Jay,Jim Piddock,Christopher Neame,Mark Ryan,Jamie Harris,Monty Stuart,Ron Perkins,Anthony De Marco,Chao Li Chi,John B. Crye,William Morgan Sheppard,Ezra Buzzington,James Lancaster,Johnny Liska,Russ Fega,Kevin Will,Edward Hibbert,James Otis,Sam Menning,Brian Tahash,Jodi Bianca Wise,Enn Reitel,Robert W. Arbogast,Chris Cleveland,Rock Anthony,Basilina Butler,Erin Cipolletti,Tim Pilleri,Gary Sievers,Inna Swann",
   "picture": "http://image.tmdb.org/t/p/w185/5MXyQfz8xUP3dIFPTubhTsbFY6N.jpg",
-  "averating": 8.2,
+  "averating": 4.1,
   "numrating": 22009,
   "description": "A mysterious story of two magicians whose intense rivalry leads them on a life-long battle for supremacy -- full of obsession, deceit and jealousy with dangerous and deadly consequences.",
   "typelist": "Drama,Mystery,Thriller"
@@ -639,7 +639,7 @@ window.MOCK_MOVIES = [
   "director": "Christopher Nolan",
   "leadactors": "Guy Pearce,Carrie-Anne Moss,Joe Pantoliano,Mark Boone Junior,Stephen Tobolowsky,Harriet Sansom Harris,Callum Keith Rennie,Larry Holden,Jorja Fox,Russ Fega,Thomas Lennon,Kimberly Campbell,Marianne Muellerleile",
   "picture": "http://image.tmdb.org/t/p/w185/fQMSaP88cf1nz4qwuNEEFtazuDM.jpg",
-  "averating": 8.4,
+  "averating": 4.2,
   "numrating": 42430,
   "description": "Suffering short-term memory loss after a head injury, Leonard Shelby embarks on a grim quest to find the lowlife who murdered his wife in this gritty, complex thriller that packs more knots than a hangman's noose. To carry out his plan, Shelby snaps Polaroids of people and places, jotting down contextual notes on the backs of photos to aid in his search and jog his memory. He even tattoos his own body in a desperate bid to remember.",
   "typelist": "Mystery,Thriller"
@@ -653,7 +653,7 @@ window.MOCK_MOVIES = [
   "director": "Ridley Scott",
   "leadactors": "Matt Damon,Jessica Chastain,Kristen Wiig,Jeff Daniels,Michael Peña,Sean Bean,Kate Mara,Sebastian Stan,Aksel Hennie,Chiwetel Ejiofor,Benedict Wong,Mackenzie Davis,Donald Glover,Nick Mohammed,Chen Shu,Eddy Ko,Enzo Cilenti,Jonathan Aris,Gruffudd Glyn,Naomi Scott,Geoffrey Thomas,Yang Haiwen,Narantsogt Tsogtsaikhan,Brian Caspe,Szonja Oroszlán,Mark O'Neal,Karen Gagnon,Lili Bordán,Nikolett Barabas,Dilyana Bouklieva,Björn Freiberg,James Fred Harkins Jr.,Sam Spruell,Matt Devere,Mike Kelly,Greg De Cuir,Peter Linka,Declan Hannigan,Peter Schueller,Waleska Latorre,Frederik Pleitgen,Charlie Gardner,Nóra Lili Hörich,Kamilla Fátyol,Yang Liu,Richard Rifkin,Nicholas Wittman,Ben O'Brien,Scott Alexander Young,Jason Ryan,James Dougherty",
   "picture": "http://image.tmdb.org/t/p/w185/5aGhaIHYuQbqlHWvWYqMCnj40y2.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 14680,
   "description": "During a manned mission to Mars, Astronaut Mark Watney is presumed dead after a fierce storm and left behind by his crew. But Watney has survived and finds himself stranded and alone on the hostile planet. With only meager supplies, he must draw upon his ingenuity, wit and spirit to subsist and find a way to signal to Earth that he is alive.",
   "typelist": "Drama,Adventure,Science Fiction"
@@ -667,7 +667,7 @@ window.MOCK_MOVIES = [
   "director": "James Gunn",
   "leadactors": "Chris Pratt,Zoe Saldana,Dave Bautista,Vin Diesel,Bradley Cooper,Michael Rooker,Karen Gillan,Pom Klementieff,Sylvester Stallone,Kurt Russell,Elizabeth Debicki,Chris Sullivan,Sean Gunn,Tommy Flanagan,Laura Haddock,Hannah Gottesman,Hilty Bowen,Ben Browder,Alexander Klein,Luke Cook,Evan Jones,Joe Fria,Terence Rosemore,Jimmy Urine,Stephen Blackehart,Steve Agee,Blondy Baruti,Richard Christy,Rob Zombie,Sierra Love,Kendra Carelli,Milynn Sarley,Seth Green,Molly C. Quinn,Michael Rosenbaum,Rhoda Griffis,Stan Lee,David Hasselhoff,Mac Wells,Jim Gunn Sr.,Leota Gunn,Elizabeth Ludlow,Wyatt Oleff,Gregg Henry,Damita Jane Howard,Ving Rhames,Michelle Yeoh,Donny Carrington,Brian Clackley,Miley Cyrus,Nea Dune,Fred,Fred Galle,Tahseen Ghauri,Jeff Goldblum,Alphonso A'Qen-Aten Jackson,Kelly Richardson,Guillermo Rodriguez,Josh Tipis,Stephen Vining,Jason Williams,Cheyanna Lavon Zubas,Aaron Schwartz",
   "picture": "http://image.tmdb.org/t/p/w185/y4MBh0EjBlMuOzv9axM4qJlmhzz.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 3515,
   "description": "The Guardians must fight to keep their newfound family together as they unravel the mysteries of Peter Quill's true parentage.",
   "typelist": "Action,Adventure,Comedy,Science Fiction"
@@ -681,7 +681,7 @@ window.MOCK_MOVIES = [
   "director": "Don Hall,Chris Williams",
   "leadactors": "Scott Adsit,Ryan Potter,Daniel Henney,T.J. Miller,Jamie Chung,Damon Wayans Jr.,Génesis Rodríguez,James Cromwell,Alan Tudyk,Maya Rudolph,Abraham Benrubi,Katie Lowes,Billy Bush,Daniel Gerson,Paul Briggs,Charlie Adler,Marcella Lentz-Pope,David Shaughnessy,Cam Clarke,Nicholas Guest,Terri Douglas,Tim Mertens,Yuri Lowenthal,Sundra Oakley,Brian R. Norris,Stan Lee,Shane Sweet,Frank Welker,David Cowgill,Kirk Baily,Charlotte Gulezian,Reed Buck,Roy Conli,Cooper Cowgill,Jackie Gonneau,Marlie Crisafulli,Bridget Hoffman,Kelly Hoover,Leah Latham,James Taku Leung,Yumi Mizui,Michael Powers,Lynwood Robinson,Josie Trinidad,Dan Howell,June Christopher",
   "picture": "http://image.tmdb.org/t/p/w185/9gLu47Zw5ertuFTZaxXOvNfy78T.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 9940,
   "description": "The special bond that develops between plus-sized inflatable robot Baymax, and prodigy Hiro Hamada, who team up with a group of friends to form a band of high-tech heroes.",
   "typelist": "Adventure,Family,Animation,Action,Comedy"
@@ -695,7 +695,7 @@ window.MOCK_MOVIES = [
   "director": "Dean DeBlois",
   "leadactors": "Jay Baruchel,Cate Blanchett,Gerard Butler,Craig Ferguson,America Ferrera,Jonah Hill,Christopher Mintz-Plasse,T.J. Miller,Kristen Wiig,Djimon Hounsou,Kit Harington,Kieron Elliott,Philip McGrade,Andrew Ableson,Gideon Emery,Simon Kassianides,Randy Thom",
   "picture": "http://image.tmdb.org/t/p/w185/lRjOR4uclMQijUav4OjeZprlehu.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 4445,
   "description": "The thrilling second chapter of the epic How To Train Your Dragon trilogy brings back the fantastical world of Hiccup and Toothless five years later. While Astrid, Snotlout and the rest of the gang are challenging each other to dragon races (the island's new favorite contact sport), the now inseparable pair journey through the skies, charting unmapped territories and exploring new worlds. When one of their adventures leads to the discovery of a secret ice cave that is home to hundreds of new wild dragons and the mysterious Dragon Rider, the two friends find themselves at the center of a battle to protect the peace.",
   "typelist": "Fantasy,Action,Adventure,Animation,Comedy,Family"
@@ -709,7 +709,7 @@ window.MOCK_MOVIES = [
   "director": "Pete Docter",
   "leadactors": "Amy Poehler,Phyllis Smith,Richard Kind,Bill Hader,Lewis Black,Mindy Kaling,Kaitlyn Dias,Diane Lane,Kyle MacLachlan,Paula Poundstone,Bobby Moynihan,Paula Pell,Dave Goelz,Frank Oz,Josh Cooley,Flea,John Ratzenberger,Carlos Alazraqui,Peter Sagal,Rashida Jones,Lori Alan,Gregg Berger,Aurora Blue,Veronika Bonell,Lola Cooley,John Cygan,Dani Dare,Andrea Datzman,Ronnie del Carmen,Pete Docter,Keith Ferguson,Tony Fucile,Mary Gibbs,Randy Hahn,Carter Hastings,Jacob Hopkins,Emma Hudak,Evan Hudak,Dara Iruka,Molly Jackson,Daniella Jones,Sophia Lee Karadi,Elissa Knight,Erik Langley,Dawnn Lewis,Tony Maki,Mona Marshall,Laraine Newman,Bret 'Brook' Parker,Paula Pell,Nick Pitera,Phil Proctor,Murray Pearl Schaeffer,Patrick Seitz,Paris Van Dyke,James Kevin Ward,Lennon Wynn,Dash Zamm,Bob Bergen,Teresa Ganzel,Jess Harnell,Danny Mann,Mickie McGowan,Jan Rabson",
   "picture": "http://image.tmdb.org/t/p/w185/aAmfIX3TT40zUHGcCKrlOZRKC7u.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 12600,
   "description": "Growing up can be a bumpy road, and it's no exception for Riley, who is uprooted from her Midwest life when her father starts a new job in San Francisco. Like all of us, Riley is guided by her emotions - Joy, Fear, Anger, Disgust and Sadness. The emotions live in Headquarters, the control center inside Riley's mind, where they help advise her through everyday life. As Riley and her emotions struggle to adjust to a new life in San Francisco, turmoil ensues in Headquarters. Although Joy, Riley's main and most important emotion, tries to keep things positive, the emotions conflict on how best to navigate a new city, house and school.",
   "typelist": "Drama,Comedy,Animation,Family"
@@ -723,7 +723,7 @@ window.MOCK_MOVIES = [
   "director": "Martin Scorsese",
   "leadactors": "Leonardo DiCaprio,Mark Ruffalo,Ben Kingsley,Emily Mortimer,Michelle Williams,Max von Sydow,Jackie Earle Haley,Patricia Clarkson,Ted Levine,John Carroll Lynch,Elias Koteas,Robin Bartlett,Christopher Denham,Spencer Treat Clark,Joseph Sikora,Curtiss Cook,Gary Galone,John Franchi,Nellie Sciutto,Raymond Anthony Thomas,Joseph McKenna,Ruby Jerins,Tom Kemp,Bates Wilder,Drew Beasley,Dan Marshall",
   "picture": "http://image.tmdb.org/t/p/w185/zumLrxQmbpqhGcjpYcmZ1YXCCvI.jpg",
-  "averating": 8.0,
+  "averating": 4,
   "numrating": 17356,
   "description": "World War II soldier-turned-U.S. Marshal Teddy Daniels investigates the disappearance of a patient from a hospital for the criminally insane, but his efforts are compromised by his troubling visions and also by a mysterious doctor.",
   "typelist": "Drama,Thriller,Mystery"
@@ -737,7 +737,7 @@ window.MOCK_MOVIES = [
   "director": "David Fincher",
   "leadactors": "Cate Blanchett,Brad Pitt,Tilda Swinton,Julia Ormond,Elle Fanning,Madisen Beaty,Jason Flemyng,Elias Koteas,Taraji P. Henson,Josh Stewart,Faune A. Chambers,Donna DuPlantier,Jacob Tolano,Ed Metzger,Danny Vinson,David Jensen,Joeanna Sayler,Rus Blackwell,Mahershala Ali,Adrian Armas,Phyllis Somerville,Lance E. Nichols,David Ross Paterson,Fiona Hale,Marion Zinser,Edith Ivey,Patrick Thomas O'Brien,Ted Manson,Clay Cullen,Peter Donald Badalamenti II,Paula Gray,Jared Harris,Earl Maddox,Bianca Chiminello,Emma Degerstedt,Megan Brown,Clay Chamberlin",
   "picture": "http://image.tmdb.org/t/p/w185/4O4INOPtWTfHq3dd5vYTPV0TCwa.jpg",
-  "averating": 7.2,
+  "averating": 3.6,
   "numrating": 10233,
   "description": "Tells the story of Benjamin Button, a man who starts aging backwards with bizarre consequences.",
   "typelist": "Fantasy,Drama,Thriller,Mystery,Romance"
@@ -751,7 +751,7 @@ window.MOCK_MOVIES = [
   "director": "Ang Lee",
   "leadactors": "Suraj Sharma,Irrfan Khan,Ayush Tandon,Gautam Belur,Adil Hussain,Tabu,Ayaan Khan,Mohd Abbas Khaleeli,Vibish Sivakumar,Rafe Spall,Gérard Depardieu,James Saito,Jun Naito,Andrea Di Stefano,Shravanthi Sainath,Elie Alouf,Padmini Ramachandran,T.M. Karthik,Amarendran Ramanan,Hari Mina Bala,Wang Bo-Chieh",
   "picture": "http://image.tmdb.org/t/p/w185/sLYdcz7easaS7CmJGwQcVVYZqiF.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 7180,
   "description": "The story of an Indian boy named Pi, a zookeeper's son who finds himself in the company of a hyena, zebra, orangutan, and a Bengal tiger after a shipwreck sets them adrift in the Pacific Ocean.",
   "typelist": "Adventure,Drama,Action"
@@ -765,7 +765,7 @@ window.MOCK_MOVIES = [
   "director": "Alfonso Cuarón",
   "leadactors": "Sandra Bullock,George Clooney,Ed Harris,Orto Ignatiussen,Phaldut Sharma,Amy Warren,Basher Savage",
   "picture": "http://image.tmdb.org/t/p/w185/uPxtxhB2Fy9ihVqtBtNGHmknJqV.jpg",
-  "averating": 7.2,
+  "averating": 3.6,
   "numrating": 11139,
   "description": "Dr. Ryan Stone, a brilliant medical engineer on her first Shuttle mission, with veteran astronaut Matt Kowalsky in command of his last flight before retiring. But on a seemingly routine spacewalk, disaster strikes. The Shuttle is destroyed, leaving Stone and Kowalsky completely alone-tethered to nothing but each other and spiraling out into the blackness of space. The deafening silence tells them they have lost any link to Earth and any chance for rescue. As fear turns to panic, every gulp of air eats away at what little oxygen is left. But the only way home may be to go further out into the terrifying expanse of space.",
   "typelist": "Science Fiction,Thriller,Drama"
@@ -779,7 +779,7 @@ window.MOCK_MOVIES = [
   "director": "Scott Derrickson",
   "leadactors": "Benedict Cumberbatch,Chiwetel Ejiofor,Rachel McAdams,Mads Mikkelsen,Tilda Swinton,Benedict Wong,Michael Stuhlbarg,Benjamin Bratt,Scott Adkins,Zara Phythian,Alaa Safi,Katrina Durden,Topo Wresniwiro,Umit Ulgen,Linda Louise Duan,Mark Anthony Brighton,Meera Syal,Amy Landecker,Adam Pelta-Pauls,Sarah Malin,Eben Young,Kobna Holdbrook-Smith,Elizabeth Healey,Guillaume Faure,Daniel Dow,Stan Lee,Ezra Khan,Kimberly Van Luin,Pat Kiernan,Alister Albert,Moya Allen,Mairead Armstrong,Raj Awasti,Annarie Boor,Dante Briggins,Jill Buchanan,Alice Chen,Bern Collaco,Anna Elizabeth Eaton,Daniel Eghan,Juani Feliz,Cliff Ferraro,Sian Francis,Ulises Galeano,Martavious Gayles,Chris Hemsworth,Leigh Holland,Mo Idriss,Tamika Katon-Donegal,Faith Logan,Tyrone Love,Pezhmaan Alinia,Kei Miura,Cameron Moon,Shina Shihoko Nagai,Emily Ng,Emeson Nwolie,Jag Patel,Andreas Pliatsikas,Henardo Rodriguez,Samantha Russell,Michelle Santiago,Nancy Ellen Shore,Tina Simmons,Rachel Emma Slack,Clem So,Ruolan Zhang",
   "picture": "http://image.tmdb.org/t/p/w185/4PiiNGXj1KENTmCBHeN6Mskj2Fq.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 4149,
   "description": "After his career is destroyed, a brilliant but arrogant surgeon gets a new lease on life when a sorcerer takes him under his wing and trains him to defend the world against evil.",
   "typelist": "Action,Adventure,Fantasy,Science Fiction"
@@ -793,7 +793,7 @@ window.MOCK_MOVIES = [
   "director": "Ron Clements,John Musker",
   "leadactors": "Auli'i Cravalho,Dwayne Johnson,Rachel House,Temuera Morrison,Jemaine Clement,Nicole Scherzinger,Alan Tudyk,Louise Bush,Chris Jackson,Oscar Kightley,Troy Polamalu,Puanani Cravalho",
   "picture": "http://image.tmdb.org/t/p/w185/z4x0Bp48ar3Mda8KiPD1vwSY3D8.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 2394,
   "description": "In Ancient Polynesia, when a terrible curse incurred by Maui reaches an impetuous Chieftain's daughter's island, she answers the Ocean's call to seek out the demigod to set things right.",
   "typelist": "Animation,Adventure,Comedy,Family,Fantasy,Music"
@@ -807,7 +807,7 @@ window.MOCK_MOVIES = [
   "director": "Garth Jennings",
   "leadactors": "Matthew McConaughey,Reese Witherspoon,Seth MacFarlane,Scarlett Johansson,John C. Reilly,Taron Egerton,Tori Kelly,Rhea Perlman,Nick Kroll,Nick Offerman,Garth Jennings,Peter Serafinowicz,Beck Bennett,Jennifer Saunders,Jennifer Hudson,Jay Pharoah,Laraine Newman,Bill Farmer,Adam Buxton,Brad Morris,Wes Anderson,Chris Renaud,Edgar Wright,Asher Blinkoff,Jessica Rau,Carlos Alazraqui,Sara Mann,Daamen J. Krall,Bob Bergen,Doug Burch,Cathy Cavadini,Jason Pace,Townsend Coleman,Abby Craden,Jim Cummings,John DeMita,Willow Geer,Tara Strong,Jess Harnell,Leslie Jones,Oscar Jennings,Leo Jennings,Caspar Jennings,Asa Jennings,Jon Robert Hall,Laura Dickinson,Jen Faith Brown,Áurea,Marisa Liz,Mickael Carreira,Deolinda Kinzimba,Jeremy Maxwell",
   "picture": "http://image.tmdb.org/t/p/w185/5z4Bj0zUupF7z4VW0REAdso1uxz.jpg",
-  "averating": 6.8,
+  "averating": 3.4,
   "numrating": 614,
   "description": "A koala named Buster recruits his best friend to help him drum up business for his theater by hosting a singing competition.",
   "typelist": "Animation,Comedy,Drama,Family,Music"
@@ -821,7 +821,7 @@ window.MOCK_MOVIES = [
   "director": "Chris Renaud",
   "leadactors": "Louis C.K.,Eric Stonestreet,Kevin Hart,Jenny Slate,Lake Bell,Bobby Moynihan,Albert Brooks,Ellie Kemper,Hannibal Buress,Dana Carvey,Steve Coogan,Tara Strong,Chris Renaud,Michael Beattie,Sandra Echeverría,Jaime Camil,Kiely Renaud,Bob Bergen,Jason Marsden,Jim Cummings,Mona Marshall,Brian T. Delaney,Laraine Newman,Bill Farmer,Jan Rabson,Jess Harnell,Ken Schretzmann,John Kassir,Danny Mann,Jim Ward,Tyler Werrin",
   "picture": "http://image.tmdb.org/t/p/w185/WLQN5aiQG8wc9SeKwixW7pAR8K.jpg",
-  "averating": 6.6,
+  "averating": 3.3,
   "numrating": 1291,
   "description": "The quiet life of a terrier named Max is upended when his owner takes in Duke, a stray whom Max instantly dislikes.",
   "typelist": "Adventure,Animation,Family,Comedy"
@@ -835,7 +835,7 @@ window.MOCK_MOVIES = [
   "director": "Alejandro González Iñárritu",
   "leadactors": "Leonardo DiCaprio,Tom Hardy,Will Poulter,Domhnall Gleeson,Paul Anderson,Brad Carter,Kristoffer Joner,Lukas Haas,Brendan Fletcher,Joshua Burge,Robert Moloney,Grace Dove,Timothy Lyle,Kory Grim,Forrest Goodluck,Duane Howard,Arthur RedCloud,Vincent Leclerc,Emmanuel Bilodeau",
   "picture": "http://image.tmdb.org/t/p/w185/oXUWEc5i3wYyFnL1Ycu8ppxxPvs.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 5832,
   "description": "In the 1820s, a frontiersman, Hugh Glass, sets out on a path of vengeance against those who left him for dead after a bear mauling.",
   "typelist": "Western,Drama,Adventure,Thriller"
@@ -849,7 +849,7 @@ window.MOCK_MOVIES = [
   "director": "Mel Gibson",
   "leadactors": "Andrew Garfield,Sam Worthington,Vince Vaughn,Luke Bracey,Teresa Palmer,Hugo Weaving,Rachel Griffiths,Ryan Corr,Richard Roxburgh,Luke Pegler,Firass Dirani,Goran D. Kleut,Nathaniel Buzolic,Ori Pfeffer,Matthew Nable,Jacob Warner,Richard Pyros,Ben Mingay,Harry Greenwood,Damien Thomlinson,Robert Morgan,Milo Gibson,John Batziolas,John Cannon,Mikael Koski,Charles Jacobs,Ben O'Toole,James Lugton,Tim McGarry,Tyler Coppin,Dennis Kreusler,Nico Cortez,Helmut Bakaitis,Bill Young,Benedict Hardie,Philip Quast,James Mackay,Sam Parsonson,Sean Lynch,Thomas Unger,Hayden Geens,Tim Potter,Santo Tripodi,Laurence Brewer,Nobuaki Shimamoto,Hiroshi Kasuga,Yuki Nagashima,Taki Abe,Taka Uematsu,Yoji Tatsuta,Milan Pulvermacher",
   "picture": "http://image.tmdb.org/t/p/w185/bndiUFfJxNd2fYx8XO610L9a07m.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 1759,
   "description": "WWII American Army Medic Desmond T. Doss, who served during the Battle of Okinawa, refuses to kill people and becomes the first Conscientious Objector in American history to receive the Congressional Medal of Honor.",
   "typelist": "Drama,History,War"
@@ -863,7 +863,7 @@ window.MOCK_MOVIES = [
   "director": "Luca Guadagnino",
   "leadactors": "Timothée Chalamet,Armie Hammer,Michael Stuhlbarg,Amira Casar,Esther Garrel,Victoire Du Bois,Vanda Capriolo,Antonio Rimoldi,Elena Bucci,André Aciman,Peter Spears,Marco Sgrosso,Xhuliano Ujka",
   "picture": "http://image.tmdb.org/t/p/w185/tcNniniS4rfqrLH0oORikJfnIwY.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 397,
   "description": "Elio Perlman is spending the summer with his family at their vacation home in Lombardy, Italy. When his father hires a handsome doctoral student, the curious 17-year-old finds himself developing a growing attraction to the young man.",
   "typelist": "Romance,Drama"
@@ -877,7 +877,7 @@ window.MOCK_MOVIES = [
   "director": "Stephen Chow",
   "leadactors": "Stephen Chow,Yuen Wah,Yuen Qiu,Lam Tze-Chung,Huang Sheng-Yi,Dung Chi-Wa,Chiu Chi-Ling,Xing Yu,Danny Chan Kwok-Kwan,Bruce Leung Siu-Lung,Tenky Tin Kai-Man,Jia Kang-Xi,Fung Hak-On,Lam Suet,Yuen Cheung-Yan,Feng Xiaogang,Kai Shi Chen",
   "picture": "http://image.tmdb.org/t/p/w185/dZsfDrNLGWgsIUQL1vGhl8tbnqY.jpg",
-  "averating": 7.6,
+  "averating": 3.8,
   "numrating": 5205,
   "description": "Set in Canton, China in the 1940s, the story revolves in a town ruled by the Axe Gang, Sing who desperately wants to become a member. He stumbles into a slum ruled by eccentric landlords who turns out to be the greatest kung-fu masters in disguise. Sing's actions eventually cause the Axe Gang and the slumlords to engage in an explosive kung-fu battle. Only one side will win and only one hero will emerge as the greatest kung-fu master of all.",
   "typelist": "Action,Comedy,Crime,Fantasy"
@@ -891,7 +891,7 @@ window.MOCK_MOVIES = [
   "director": "Ang Lee",
   "leadactors": "Chow Yun-fat,Michelle Yeoh,Zhang Ziyi,Chang Chen,Cheng Pei-Pei,Sihung Lung,Fa Zeng Li,Su Ying Huang,Xian Gao,Yan Hai,De Ming Wang,Li Li",
   "picture": "http://image.tmdb.org/t/p/w185/2D7kikHUHbecJGoRAspBYiqoxd6.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 30729,
   "description": "Two warriors in pursuit of a stolen sword and a notorious fugitive are led to an impetuous, physically-skilled, teenage nobleman's daughter, who is at a crossroads in her life.",
   "typelist": "Adventure,Drama,Action,Romance"
@@ -905,7 +905,7 @@ window.MOCK_MOVIES = [
   "director": "Zhang Yimou",
   "leadactors": "Jet Li,Tony Leung Chiu-Wai,Maggie Cheung,Donnie Yen,Zhang Ziyi,Chen Dao-Ming,Liu Zhong Yuan,Zheng Tia Yong,Yan Qin,Chang Xiao Yang,James Hong,Xia Bin,Hua Cao,Heizi,Ma Wen Hua,Xu Kuang Hua,Li Lei,Emil Lin,Liu Jie,Bruce Locke,Jin Ming,Angela Oh,Peng Qiang,James Sie,Elizabeth Sung,Shou Xin Wang,Yakun Zhang",
   "picture": "http://image.tmdb.org/t/p/w185/xkJnow23eDxwQXB0iIWAWkBF47y.jpg",
-  "averating": 7.8,
+  "averating": 3.9,
   "numrating": 8870,
   "description": "One man defeated three assassins who sought to murder the most powerful warlord in pre-unified China.",
   "typelist": "Drama,Adventure,Action,History"
@@ -919,7 +919,7 @@ window.MOCK_MOVIES = [
   "director": "Zhang Yimou",
   "leadactors": "Takeshi Kaneshiro,Andy Lau,Zhang Ziyi,Song Dandan,Zhao Hongfei,Guo Jun,Zhang Shu,Wang Jiu-Sheng,Zhang Zheng-Yong,Wang Yong-Xin,Liu Dong,Zi Qi,Qu Xue-Dong,Yang Guang,Wen Yang,Zheng Xiao-Dong,Suki Wong",
   "picture": "http://image.tmdb.org/t/p/w185/39XJExIXKyvSYQYvy1b5EsutjB8.jpg",
-  "averating": 7.4,
+  "averating": 3.7,
   "numrating": 5132,
   "description": "In 9th century China, a corrupt government wages war against a rebel army called the Flying Daggers. A romantic warrior breaks a beautiful rebel out of prison to help her rejoin her fellows, but things are not what they seem.",
   "typelist": "Adventure,Drama,Action,Romance"
@@ -933,7 +933,7 @@ window.MOCK_MOVIES = [
   "director": "Dante Lam",
   "leadactors": "Zhang Hanyu,Zhang Yi,Hai Qing,Du Jiang,Johnny Huang,Bai Bing",
   "picture": "http://image.tmdb.org/t/p/w185/9tK68ZVPhpdABnW8DmtOsQ9avhZ.jpg",
-  "averating": 5.6,
+  "averating": 2.8,
   "numrating": 2,
   "description": "The film is loosely based on the evacuation of the 225 foreign nationals and almost 600 Chinese citizens from Yemen's southern port of Aden during the 2015 Yemeni Civil War.",
   "typelist": "Action,Adventure"
@@ -947,7 +947,7 @@ window.MOCK_MOVIES = [
   "director": "Zhang Yimou",
   "leadactors": "Matt Damon,Jing Tian,Willem Dafoe,Andy Lau,Pedro Pascal,Zhang Hanyu,Lu Han,Lin Gengxin,Eddie Peng,Huang Xuan,Ryan Zheng Kai,Cheney Chen,Pilou Asbæk,Numan Acar,Bing Liu,Karry Wang,Johnny Cicco,Vicky Yu",
   "picture": "http://image.tmdb.org/t/p/w185/p70dq1YxabemdZDm5K6Q8G10wSn.jpg",
-  "averating": 6.0,
+  "averating": 3,
   "numrating": 383,
   "description": "European mercenaries searching for black powder become embroiled in the defense of the Great Wall of China against a horde of monstrous creatures.",
   "typelist": "Action,Adventure,Fantasy"
@@ -961,7 +961,7 @@ window.MOCK_MOVIES = [
   "director": "Wu Jing",
   "leadactors": "Wu Jing,Nan Yu,Ni Dahong,Scott Adkins,Shi Zhaoqi,Zhou Xiaoou,Kevin Lee,Kyle Shapiro",
   "picture": "http://image.tmdb.org/t/p/w185/pcC3aWHzO8RcKtTLI37uus92rKv.jpg",
-  "averating": 6.0,
+  "averating": 3,
   "numrating": 4,
   "description": "A Chinese special force soldier with extraordinary marksmanship is confronted by a group of deadly foreign mercenaries who are hired to assassinate him by a vicious drug lord.",
   "typelist": "Adventure,Action,War"
